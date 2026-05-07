@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="brand">
+      <span class="brand-icon">V</span>
+      <div class="brand-copy">
+        <strong>Vesuvio</strong>
+        <small>Pizza • Delivery • Take Away</small>
+      </div>
+    </a>
+
+    <nav class="main-nav">
+      <a href="/">Home</a>
+      <a href="/menu">Menu</a>
+      <a href="/contatti">Contatti</a>
+      <a href="#chatbot">Ordina</a>
+    </nav>
+
+    <div class="header-actions">
+      <a href="/menu" class="btn btn-ghost">Esplora menu</a>
+      <a href="#chatbot" class="btn btn-primary">Ordina ora</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero-premium">
+    <div class="hero-overlay"></div>
+
+    <div class="container hero-premium-grid">
+      <div class="hero-content">
+        <p class="eyebrow light">Pizzeria artigianale premium</p>
+        <h1>La pizza che sembra già buona prima ancora del primo morso.</h1>
+        <p class="hero-description">
+          Un sito pensato per vendere meglio: immagini reali, menu chiaro,
+          ordini più rapidi e chatbot dedicato solo alla presa ordine.
+        </p>
+
+        <div class="hero-buttons">
+          <a href="#chatbot" class="btn btn-primary">Apri chatbot</a>
+          <a href="/menu" class="btn btn-outline-light">Guarda il menu</a>
+        </div>
+
+        <div class="hero-metrics">
+          <div class="metric-card">
+            <strong>20–30 min</strong>
+            <span>Tempo medio stimato</span>
+          </div>
+          <div class="metric-card">
+            <strong>Menu chiaro</strong>
+            <span>Pizze, bevande, extra</span>
+          </div>
+          <div class="metric-card">
+            <strong>Slot smart</strong>
+            <span>In base al carico ordini</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-side-card">
+        <div class="hero-side-media">
+          <img
+            src="https://muffingroup.com/blog/wp-content/uploads/2022/10/Be-Pizza3.png"
+            alt="Pizza artigianale in primo piano"
+            width="1000"
+            height="506"
+            loading="lazy"
+          />
+        </div>
+
+        <div class="hero-side-content">
+          <span class="mini-label">Signature pizza</span>
+          <h3>Bufala Deluxe</h3>
+          <p>Pomodoro San Marzano, mozzarella di bufala, basilico fresco e olio EVO.</p>
+
+          <div class="hero-side-row">
+            <span class="price">€10.50</span>
+            <span class="tag">Più ordinata</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="story-section">
+    <div class="container story-grid">
+      <div class="story-image">
+        <img
+          src="https://muffingroup.com/blog/wp-content/uploads/2022/10/Be-Pizza-1.png"
+          alt="Pizza servita su tavolo con ingredienti e bevanda"
+          width="1000"
+          height="565"
+          loading="lazy"
+        />
+      </div>
+
+      <div class="story-copy">
+        <p class="eyebrow">Esperienza digitale migliore</p>
+        <h2>Design più appetitoso, ordine più semplice, meno attrito.</h2>
+        <p>
+          Una homepage pizzeria deve trasmettere fame, fiducia e immediatezza.
+          Per questo il menu va mostrato bene, il numero di telefono deve essere
+          visibile e l’azione di ordinare deve essere sempre chiara. 
+        </p>
+        <p>
+          In più, il tuo progetto aggiunge un chatbot focalizzato sugli ordini,
+          che è coerente con le best practice dei chatbot restaurant: compito preciso,
+          quick replies, informazioni pratiche e guida step-by-step. 
+        </p>
+
+        <div class="story-points">
+          <div class="point-card">
+            <strong>Fotografie forti</strong>
+            <span>Per aumentare desiderabilità visiva</span>
+          </div>
+          <div class="point-card">
+            <strong>CTA immediate</strong>
+            <span>Ordina senza cercare troppo</span>
+          </div>
+          <div class="point-card">
+            <strong>Chatbot mirato</strong>
+            <span>Non generico, solo utile</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="menu-showcase">
+    <div class="container">
+      <div class="section-head centered">
+        <p class="eyebrow">Selezione in evidenza</p>
+        <h2>Le pizze che devono colpire subito.</h2>
+        <p>
+          I siti pizza migliori mettono in risalto prodotti forti, immagini reali e
+          un percorso rapido verso il menu completo. 
+        </p>
+      </div>
+
+      <div class="premium-menu-grid">
+        <article class="premium-menu-card dark">
+          <span class="menu-badge">Classica</span>
+          <h3>Margherita</h3>
+          <p>Pomodoro, fiordilatte, basilico fresco.</p>
+          <div class="menu-meta">
+            <strong>€6.50</strong>
+            <span>Essenziale</span>
+          </div>
+        </article>
+
+        <article class="premium-menu-card featured">
+          <span class="menu-badge">Top seller</span>
+          <h3>Diavola</h3>
+          <p>Pomodoro, fiordilatte, salame piccante.</p>
+          <div class="menu-meta">
+            <strong>€8.50</strong>
+            <span>Piccante</span>
+          </div>
+        </article>
+
+        <article class="premium-menu-card light">
+          <span class="menu-badge">Premium</span>
+          <h3>Bufalina</h3>
+          <p>Pomodoro, mozzarella di bufala, basilico.</p>
+          <div class="menu-meta">
+            <strong>€9.50</strong>
+            <span>Delicata</span>
+          </div>
+        </article>
+      </div>
+
+      <div class="center-actions">
+        <a href="/menu" class="btn btn-dark">Vai al menu completo</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="chatbot-premium-section" id="chatbot">
+  <div class="container chatbot-premium-grid">
+    <div class="chatbot-copy">
+      <p class="eyebrow">Ordine guidato</p>
+      <h2>Uno spazio conversazionale che usa davvero i prodotti del database.</h2>
+      <p class="chatbot-copy-text">
+        Questo chatbot MVP legge il menu reale, ti fa scegliere un prodotto,
+        chiede consegna o ritiro e prepara un riepilogo finale semplice e chiaro.
+      </p>
+
+      <div class="chatbot-feature-list">
+        <div><strong>Prodotti reali</strong><span>Caricati via API dal database</span></div>
+        <div><strong>Ordine guidato</strong><span>Meno errori e percorso più corto</span></div>
+        <div><strong>Base solida</strong><span>Pronto per carrello e backend ordini</span></div>
+      </div>
+    </div>
+
+    <div class="chatbot-shell">
+      <div class="chatbot-shell-top">
+        <div class="chatbot-shell-brand">
+          <span class="chatbot-dot"></span>
+          <strong>Assistente Vesuvio</strong>
+        </div>
+        <span class="chatbot-status" id="chatbotStatus">Caricamento menu...</span>
+      </div>
+
+      <div class="chatbot-messages" id="chatbotMessages"></div>
+
+      <div class="chatbot-quick-actions" id="chatbotQuickActions"></div>
+
+      <div class="chatbot-input-row">
+        <input
+          type="text"
+          id="chatbotInput"
+          placeholder="Scrivi qui il tuo indirizzo oppure una nota"
+        />
+        <button type="button" class="btn btn-primary" id="chatbotSendBtn">Invia</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+  <section class="practical-lux">
+    <div class="container practical-lux-grid">
+      <article class="lux-card">
+        <span class="lux-kicker">Orari</span>
+        <h3>Tutti i giorni</h3>
+        <p>18:00 — 23:00</p>
+      </article>
+
+      <article class="lux-card">
+        <span class="lux-kicker">Telefono</span>
+        <h3>+39 0123 456789</h3>
+        <p>Ordini rapidi e supporto clienti</p>
+      </article>
+
+      <article class="lux-card">
+        <span class="lux-kicker">Indirizzo</span>
+        <h3>Via Roma 123</h3>
+        <p>Varese, Lombardia</p>
+      </article>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer premium-footer">
+  <div class="container footer-inner">
+    <div>
+      <strong>Vesuvio</strong>
+      <p>Pizza artigianale, immagini vere, ordine rapido e chatbot focalizzato.</p>
+    </div>
+
+    <div class="footer-links">
+      <a href="/">Home</a>
+      <a href="/menu">Menu</a>
+      <a href="/contatti">Contatti</a>
+    </div>
+  </div>
+</footer>
+<script src="/static/js/chatbot.js?v=2"></script>
+{% endblock %}

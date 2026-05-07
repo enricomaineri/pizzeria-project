@@ -1,0 +1,167 @@
+from collections import Counter
+from typing import List
+
+from fastapi import APIRouter, HTTPException
+from sqlmodel import Session, select
+
+from app.db import engine
+from app.db_models import Order, OrderItem, Product
+from app.schemas.order import (
+    OrderCreate,
+    OrderCreateResponse,
+    SlotCheckRequest,
+    SlotCheckResponse,
+)
+
+router = APIRouter(prefix="/api", tags=["orders"])
+
+DELIVERY_SLOTS = ["18:30", "19:00", "19:30", "20:00", "20:30", "21:00"]
+PICKUP_SLOTS = ["18:15", "18:45", "19:15", "19:45", "20:15", "20:45", "21:15"]
+
+MAX_ORDERS_PER_SLOT = {
+    "delivery": 3,
+    "pickup": 5,
+}
+
+
+def get_slots_by_type(fulfillment_type: str) -> List[str]:
+    if fulfillment_type == "delivery":
+        return DELIVERY_SLOTS
+    if fulfillment_type == "pickup":
+        return PICKUP_SLOTS
+    return []
+
+
+def slot_is_available(session: Session, fulfillment_type: str, slot_label: str) -> bool:
+    statement = select(Order).where(
+        Order.fulfillment_type == fulfillment_type,
+        Order.slot_label == slot_label,
+        Order.status.in_(["pending", "confirmed"])
+    )
+    orders = session.exec(statement).all()
+    current_count = len(orders)
+    limit = MAX_ORDERS_PER_SLOT.get(fulfillment_type, 0)
+    return current_count < limit
+
+
+def get_alternative_slots(session: Session, fulfillment_type: str, exclude_slot: str) -> List[str]:
+    slots = get_slots_by_type(fulfillment_type)
+    available = []
+
+    for slot in slots:
+        if slot == exclude_slot:
+            continue
+        if slot_is_available(session, fulfillment_type, slot):
+            available.append(slot)
+
+    return available[:3]
+
+
+@router.get("/slots")
+def get_slots(fulfillment_type: str):
+    slots = get_slots_by_type(fulfillment_type)
+    if not slots:
+        raise HTTPException(status_code=400, detail="fulfillment_type non valido")
+
+    with Session(engine) as session:
+        result = []
+        for slot in slots:
+            result.append({
+                "label": slot,
+                "available": slot_is_available(session, fulfillment_type, slot)
+            })
+        return {"fulfillment_type": fulfillment_type, "slots": result}
+
+
+@router.post("/orders/check-slot", response_model=SlotCheckResponse)
+def check_slot(payload: SlotCheckRequest):
+    if payload.fulfillment_type not in ["delivery", "pickup"]:
+        raise HTTPException(status_code=400, detail="fulfillment_type non valido")
+
+    with Session(engine) as session:
+        available = slot_is_available(session, payload.fulfillment_type, payload.slot_label)
+        alternatives = [] if available else get_alternative_slots(
+            session,
+            payload.fulfillment_type,
+            payload.slot_label
+        )
+
+    return SlotCheckResponse(
+        available=available,
+        requested_slot=payload.slot_label,
+        alternatives=alternatives
+    )
+
+
+@router.post("/orders", response_model=OrderCreateResponse)
+def create_order(payload: OrderCreate):
+    if payload.fulfillment_type not in ["delivery", "pickup"]:
+        raise HTTPException(status_code=400, detail="fulfillment_type non valido")
+
+    if payload.fulfillment_type == "delivery" and not payload.address:
+        raise HTTPException(status_code=400, detail="Indirizzo obbligatorio per consegna")
+
+    if not payload.items:
+        raise HTTPException(status_code=400, detail="Ordine vuoto")
+
+    with Session(engine) as session:
+        if not slot_is_available(session, payload.fulfillment_type, payload.slot_label):
+            raise HTTPException(status_code=409, detail="Slot non disponibile")
+
+        total_price = 0.0
+        order_items_to_create = []
+
+        for incoming_item in payload.items:
+            product = session.get(Product, incoming_item.product_id)
+
+            if not product:
+                raise HTTPException(status_code=404, detail=f"Prodotto {incoming_item.product_id} non trovato")
+
+            if not product.is_available:
+                raise HTTPException(status_code=400, detail=f"{product.name} non disponibile")
+
+            line_total = product.price * incoming_item.quantity
+            total_price += line_total
+
+            order_items_to_create.append({
+                "product_id": product.id,
+                "product_name": product.name,
+                "quantity": incoming_item.quantity,
+                "unit_price": product.price,
+                "line_total": line_total
+            })
+
+        order = Order(
+            customer_name=payload.customer_name,
+            phone=payload.phone,
+            address=payload.address,
+            fulfillment_type=payload.fulfillment_type,
+            slot_label=payload.slot_label,
+            status="pending",
+            total_price=total_price
+        )
+
+        session.add(order)
+        session.commit()
+        session.refresh(order)
+
+        for item in order_items_to_create:
+            order_item = OrderItem(
+                order_id=order.id,
+                product_id=item["product_id"],
+                product_name=item["product_name"],
+                quantity=item["quantity"],
+                unit_price=item["unit_price"],
+                line_total=item["line_total"]
+            )
+            session.add(order_item)
+
+        session.commit()
+
+        return OrderCreateResponse(
+            success=True,
+            order_id=order.id,
+            status=order.status,
+            total_price=order.total_price,
+            slot_label=order.slot_label
+        )

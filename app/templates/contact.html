@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="brand">
+      <span class="brand-icon">V</span>
+      <div class="brand-copy">
+        <strong>Vesuvio</strong>
+        <small>Pizza • Delivery • Take Away</small>
+      </div>
+    </a>
+
+    <nav class="main-nav">
+      <a href="/">Home</a>
+      <a href="/menu">Menu</a>
+      <a href="/contatti">Contatti</a>
+      <a href="/#chatbot">Ordina</a>
+    </nav>
+
+    <div class="header-actions">
+      <a href="/menu" class="btn btn-ghost">Vedi il menu</a>
+      <a href="/#chatbot" class="btn btn-primary">Ordina ora</a>
+    </div>
+  </div>
+</header>
+
+<main class="contact-page">
+  <section class="contact-hero">
+    <div class="container contact-hero-grid">
+      <div>
+        <p class="eyebrow light">Contatti e informazioni</p>
+        <h1>Trovarci, chiamarci o ordinare deve essere immediato.</h1>
+        <p class="contact-hero-text">
+          In una buona pagina contatti tutto deve essere chiaro a colpo d’occhio:
+          indirizzo, telefono, orari, area servita e accesso rapido all’ordine.
+        </p>
+
+        <div class="contact-hero-actions">
+          <a href="tel:+390123456789" class="btn btn-primary">Chiama ora</a>
+          <a href="/#chatbot" class="btn btn-outline-light">Apri chatbot</a>
+        </div>
+      </div>
+
+      <div class="contact-highlight-card">
+        <span class="mini-label">Info rapide</span>
+        <h3>Consegna e ritiro</h3>
+        <p>Ordina online, scegli lo slot disponibile e ritira in sede oppure ricevi a domicilio.</p>
+
+        <div class="contact-mini-list">
+          <div>
+            <strong>Telefono</strong>
+            <span>+39 0123 456789</span>
+          </div>
+          <div>
+            <strong>Orari</strong>
+            <span>18:00 — 23:00</span>
+          </div>
+          <div>
+            <strong>Città</strong>
+            <span>Varese</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="contact-main">
+    <div class="container contact-layout">
+      <div class="contact-cards">
+        <article class="contact-card large">
+          <p class="eyebrow">Telefono</p>
+          <h2>Parla subito con la pizzeria</h2>
+          <p>
+            Se preferisci ordinare o chiedere informazioni in modo diretto,
+            il telefono deve essere sempre uno dei contatti più evidenti del sito.
+          </p>
+          <a href="tel:+390123456789" class="contact-link">+39 0123 456789</a>
+        </article>
+
+        <article class="contact-card">
+          <p class="eyebrow">Indirizzo</p>
+          <h3>Vieni a trovarci</h3>
+          <p>Via Roma 123<br>21100 Varese, Lombardia</p>
+          <a
+            href="https://maps.google.com/?q=Via+Roma+123+Varese"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="contact-link small"
+          >
+            Apri su Google Maps
+          </a>
+        </article>
+
+        <article class="contact-card">
+          <p class="eyebrow">Orari</p>
+          <h3>Quando siamo aperti</h3>
+          <div class="hours-list">
+            <div><span>Lunedì</span><strong>18:00 — 23:00</strong></div>
+            <div><span>Martedì</span><strong>18:00 — 23:00</strong></div>
+            <div><span>Mercoledì</span><strong>18:00 — 23:00</strong></div>
+            <div><span>Giovedì</span><strong>18:00 — 23:00</strong></div>
+            <div><span>Venerdì</span><strong>18:00 — 23:30</strong></div>
+            <div><span>Sabato</span><strong>18:00 — 23:30</strong></div>
+            <div><span>Domenica</span><strong>18:00 — 23:00</strong></div>
+          </div>
+        </article>
+
+        <article class="contact-card">
+          <p class="eyebrow">Email</p>
+          <h3>Contatto generale</h3>
+          <p>Per richieste, collaborazioni o info generali puoi scriverci qui.</p>
+          <a href="mailto:info@vesuvio.it" class="contact-link small">info@vesuvio.it</a>
+        </article>
+      </div>
+
+      <aside class="contact-side">
+        <div class="contact-side-card">
+          <h3>Ordine online</h3>
+          <p>
+            Se hai già deciso, il modo più rapido è usare il chatbot ordini:
+            prodotti, bevande, indirizzo e slot in un unico flusso.
+          </p>
+          <a href="/#chatbot" class="btn btn-primary">Vai al chatbot</a>
+        </div>
+
+        <div class="contact-side-card">
+          <h3>Info utili</h3>
+          <ul class="contact-bullets">
+            <li>Consegna disponibile in area urbana</li>
+            <li>Ritiro in sede disponibile</li>
+            <li>Ordini telefonici inseriti anche nel sistema</li>
+            <li>Slot gestiti in base al carico reale</li>
+          </ul>
+        </div>
+
+        <div class="contact-side-card map-card">
+          <h3>Mappa</h3>
+          <p>Puoi iniziare con un link esterno e poi sostituirlo con una mappa embedded.</p>
+          <a
+            href="https://maps.google.com/?q=Via+Roma+123+Varese"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn-dark"
+          >
+            Apri indicazioni
+          </a>
+        </div>
+      </aside>
+    </div>
+  </section>
+</main>
+{% endblock %}
