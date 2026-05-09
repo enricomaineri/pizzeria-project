@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, date
 from slugify import slugify
 
-from fastapi import APIRouter, Request, Form, HTTPException, Query
+from fastapi import APIRouter, Request, Form, HTTPException, Query, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
@@ -9,6 +9,7 @@ from typing import Optional
 
 from app.db import engine
 from app.db_models import Order, OrderItem, Product, Category
+from app.auth import require_admin
 
 router = APIRouter(tags=["admin"])
 templates = Jinja2Templates(directory="app/templates")
@@ -19,7 +20,11 @@ templates = Jinja2Templates(directory="app/templates")
 # ─────────────────────────────────────────────
 
 @router.get("/admin", response_class=HTMLResponse)
-def admin_dashboard(request: Request, status: str | None = None):
+def admin_dashboard(
+    request: Request,
+    status: str | None = None,
+    _admin: str = Depends(require_admin),
+):
     now = datetime.now()
     start_of_day      = datetime(now.year, now.month, now.day)
     start_of_next_day = start_of_day + timedelta(days=1)
@@ -38,7 +43,6 @@ def admin_dashboard(request: Request, status: str | None = None):
         ready_count     = len([o for o in today_orders if o.status == "ready"])
         delivered_count = len([o for o in today_orders if o.status == "delivered"])
 
-        # Filtra per stato se richiesto, ma solo tra gli ordini di oggi
         if status:
             filtered = [o for o in today_orders if o.status == status]
         else:
@@ -52,20 +56,24 @@ def admin_dashboard(request: Request, status: str | None = None):
             orders_with_items.append({"order": order, "items": items})
 
     return templates.TemplateResponse(request, "admin.html", {
-        "active_tab":      "orders",
+        "active_tab":        "orders",
         "orders_with_items": orders_with_items,
-        "selected_status": status,
-        "pending_count":   pending_count,
-        "confirmed_count": confirmed_count,
-        "preparing_count": preparing_count,
-        "ready_count":     ready_count,
-        "delivered_count": delivered_count,
-        "today_label":     now.strftime("%A %d %B %Y"),
+        "selected_status":   status,
+        "pending_count":     pending_count,
+        "confirmed_count":   confirmed_count,
+        "preparing_count":   preparing_count,
+        "ready_count":       ready_count,
+        "delivered_count":   delivered_count,
+        "today_label":       now.strftime("%A %d %B %Y"),
     })
 
 
 @router.post("/admin/order/{order_id}/status")
-def update_order_status(order_id: int, status: str = Form(...)):
+def update_order_status(
+    order_id: int,
+    status: str = Form(...),
+    _admin: str = Depends(require_admin),
+):
     with Session(engine) as session:
         order = session.get(Order, order_id)
         if not order:
@@ -83,10 +91,10 @@ def update_order_status(order_id: int, status: str = Form(...)):
 @router.get("/admin/storico", response_class=HTMLResponse)
 def admin_storico(
     request: Request,
-    data: str | None = Query(default=None),   # formato YYYY-MM-DD
+    data: str | None = Query(default=None),
     status: str | None = None,
+    _admin: str = Depends(require_admin),
 ):
-    # Se non è passata una data, default = ieri
     if data:
         try:
             selected_date = date.fromisoformat(data)
@@ -120,17 +128,16 @@ def admin_storico(
             ).all()
             orders_with_items.append({"order": order, "items": items})
 
-        # Totale giornaliero
         total_day = sum(o.total_price for o in orders)
 
     return templates.TemplateResponse(request, "admin.html", {
-        "active_tab":        "storico",
-        "orders_with_items": orders_with_items,
-        "selected_status":   status,
-        "selected_date":     selected_date.isoformat(),
+        "active_tab":          "storico",
+        "orders_with_items":   orders_with_items,
+        "selected_status":     status,
+        "selected_date":       selected_date.isoformat(),
         "selected_date_label": selected_date.strftime("%A %d %B %Y"),
-        "total_day":         total_day,
-        "order_count":       len(orders),
+        "total_day":           total_day,
+        "order_count":         len(orders),
     })
 
 
@@ -139,7 +146,10 @@ def admin_storico(
 # ─────────────────────────────────────────────
 
 @router.get("/admin/menu", response_class=HTMLResponse)
-def admin_menu(request: Request):
+def admin_menu(
+    request: Request,
+    _admin: str = Depends(require_admin),
+):
     with Session(engine) as session:
         categories = session.exec(select(Category).order_by(Category.sort_order)).all()
         products   = session.exec(select(Product).order_by(Product.category_id, Product.sort_order)).all()
@@ -163,6 +173,7 @@ def add_product(
     is_vegetarian: Optional[str] = Form(None),
     is_spicy:      Optional[str] = Form(None),
     sort_order:    int   = Form(0),
+    _admin: str = Depends(require_admin),
 ):
     with Session(engine) as session:
         product = Product(
@@ -184,7 +195,11 @@ def add_product(
 
 
 @router.get("/admin/menu/product/{product_id}/edit", response_class=HTMLResponse)
-def edit_product_form(request: Request, product_id: int):
+def edit_product_form(
+    request: Request,
+    product_id: int,
+    _admin: str = Depends(require_admin),
+):
     with Session(engine) as session:
         product    = session.get(Product, product_id)
         categories = session.exec(select(Category).order_by(Category.sort_order)).all()
@@ -213,6 +228,7 @@ def edit_product(
     is_vegetarian: Optional[str] = Form(None),
     is_spicy:      Optional[str] = Form(None),
     sort_order:    int   = Form(0),
+    _admin: str = Depends(require_admin),
 ):
     with Session(engine) as session:
         product = session.get(Product, product_id)
@@ -237,7 +253,10 @@ def edit_product(
 
 
 @router.post("/admin/menu/product/{product_id}/delete")
-def delete_product(product_id: int):
+def delete_product(
+    product_id: int,
+    _admin: str = Depends(require_admin),
+):
     with Session(engine) as session:
         product = session.get(Product, product_id)
         if not product:
@@ -248,7 +267,10 @@ def delete_product(product_id: int):
 
 
 @router.post("/admin/menu/product/{product_id}/toggle")
-def toggle_availability(product_id: int):
+def toggle_availability(
+    product_id: int,
+    _admin: str = Depends(require_admin),
+):
     with Session(engine) as session:
         product = session.get(Product, product_id)
         if not product:
@@ -263,6 +285,7 @@ def toggle_availability(product_id: int):
 def add_category(
     name:       str = Form(...),
     sort_order: int = Form(0),
+    _admin: str = Depends(require_admin),
 ):
     with Session(engine) as session:
         category = Category(
@@ -276,7 +299,10 @@ def add_category(
 
 
 @router.post("/admin/menu/category/{category_id}/delete")
-def delete_category(category_id: int):
+def delete_category(
+    category_id: int,
+    _admin: str = Depends(require_admin),
+):
     with Session(engine) as session:
         products = session.exec(select(Product).where(Product.category_id == category_id)).all()
         if products:
