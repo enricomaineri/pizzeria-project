@@ -2,234 +2,787 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Admin Ordini</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Pizzeria</title>
   <link rel="stylesheet" href="/static/css/styles.css">
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f0f0f;
+      --surface:   #1a1a1a;
+      --surface-2: #222;
+      --border:    #2e2e2e;
+      --text:      #e8e8e8;
+      --muted:     #888;
+      --accent:    #e4572e;
+      --accent-h:  #c94722;
+      --green:     #2ecc71;
+      --yellow:    #f39c12;
+      --blue:      #3498db;
+      --red:       #e74c3c;
+      --radius:    10px;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      padding: 2rem;
-      background: #111;
-      color: #f5f5f5;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
     }
 
-    h1 {
-      margin-bottom: 1.5rem;
+    /* ── Header ── */
+    .admin-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+    }
+    .admin-header h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--accent);
     }
 
+    /* ── Tab nav ── */
+    .tab-nav {
+      display: flex;
+      gap: 0.25rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+    }
+    .tab-nav a {
+      text-decoration: none;
+      color: var(--muted);
+      padding: 0.85rem 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 500;
+      border-bottom: 3px solid transparent;
+      transition: color .2s, border-color .2s;
+    }
+    .tab-nav a:hover { color: var(--text); }
+    .tab-nav a.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    /* ── Layout ── */
+    .page { padding: 2rem; max-width: 1300px; margin: 0 auto; }
+
+    /* ── Stats ── */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 1rem;
-      margin-bottom: 2rem;
-    }
-
-    .stat-card {
-      background: #1b1b1b;
-      border: 1px solid #333;
-      border-radius: 12px;
-      padding: 1rem;
-    }
-
-    .stat-card h3 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1rem;
-      color: #ccc;
-    }
-
-    .stat-card p {
-      margin: 0;
-      font-size: 1.8rem;
-      font-weight: bold;
-    }
-
-    .filter-form {
-      margin-bottom: 2rem;
-      display: flex;
-      gap: 0.75rem;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .order-card {
-      background: #1b1b1b;
-      border: 1px solid #333;
-      border-radius: 12px;
-      padding: 1rem;
       margin-bottom: 1.5rem;
     }
-
-    .order-card h2 {
-      margin-bottom: 0.75rem;
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem;
     }
+    .stat-card h3 { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: .5rem; }
+    .stat-card p  { font-size: 2rem; font-weight: 700; }
 
-    .order-card p {
-      margin: 0.35rem 0;
-    }
-
-    .items-list {
-      margin: 1rem 0;
-      padding-left: 1rem;
-    }
-
-    .items-list li {
-      margin-bottom: 0.35rem;
-    }
-
-    .status-form {
-      margin-top: 1rem;
+    /* ── Filtro ── */
+    .filter-bar {
       display: flex;
-      gap: 0.75rem;
+      gap: .75rem;
+      align-items: center;
       flex-wrap: wrap;
+      margin-bottom: 1.5rem;
     }
+    .filter-bar label { font-size: .9rem; color: var(--muted); }
 
+    /* ── Today label ── */
+    .today-label {
+      font-size: .85rem;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .today-label strong { color: var(--text); }
+
+    /* ── Order card ── */
+    .order-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .order-card-header { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .order-card-header h2 { font-size: 1.05rem; }
+    .order-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .4rem .75rem; margin-bottom: 1rem; }
+    .order-info p { font-size: .88rem; color: var(--muted); }
+    .order-info p strong { color: var(--text); }
+    .items-list { list-style: none; margin: .5rem 0 1rem; display: flex; flex-direction: column; gap: .3rem; }
+    .items-list li { font-size: .88rem; background: var(--surface-2); border-radius: 6px; padding: .4rem .75rem; }
+    .status-form { display: flex; gap: .75rem; flex-wrap: wrap; }
+
+    /* ── Badge ── */
     .badge {
-      display: inline-block;
-      padding: 0.3rem 0.7rem;
-      border-radius: 999px;
-      font-size: 0.85rem;
-      font-weight: bold;
-      margin-left: 0.5rem;
+      display: inline-block; padding: .25rem .65rem; border-radius: 999px;
+      font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
     }
+    .badge-pending    { background: #5c4317; color: #ffd27a; }
+    .badge-confirmed  { background: #1e3f5a; color: #8fd3ff; }
+    .badge-preparing  { background: #5a2f1e; color: #ffb38f; }
+    .badge-ready      { background: #1f4d2c; color: #97f0b0; }
+    .badge-delivered  { background: #3f3f3f; color: #d7d7d7; }
 
-    .badge-pending {
-      background: #5c4317;
-      color: #ffd27a;
-    }
-
-    .badge-confirmed {
-      background: #1e3f5a;
-      color: #8fd3ff;
-    }
-
-    .badge-preparing {
-      background: #5a2f1e;
-      color: #ffb38f;
-    }
-
-    .badge-ready {
-      background: #1f4d2c;
-      color: #97f0b0;
-    }
-
-    .badge-delivered {
-      background: #3f3f3f;
-      color: #d7d7d7;
-    }
-
-    select, button {
-      padding: 0.6rem 0.8rem;
+    /* ── Form controls ── */
+    select, input[type="text"], input[type="number"], input[type="url"],
+    input[type="date"], textarea {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: .55rem .8rem;
       border-radius: 8px;
-      border: none;
-      font-size: 0.95rem;
+      font-size: .9rem;
+      width: 100%;
+      outline: none;
+      transition: border-color .2s;
+    }
+    select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .55rem 1.1rem; border-radius: 8px; border: none;
+      font-size: .9rem; font-weight: 600; cursor: pointer; transition: background .2s;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-h); }
+    .btn-success { background: #1f4d2c; color: var(--green); }
+    .btn-success:hover { background: #174023; }
+    .btn-danger  { background: #4d1f1f; color: var(--red); }
+    .btn-danger:hover  { background: #3b1717; }
+    .btn-edit    { background: #1e3f5a; color: var(--blue); }
+    .btn-edit:hover    { background: #163348; }
+    .btn-ghost   { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover   { color: var(--text); }
+    .btn-sm { padding: .35rem .75rem; font-size: .8rem; }
+
+    /* ── Storico layout ── */
+    .storico-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 2rem;
+      align-items: start;
+    }
+    @media (max-width: 860px) { .storico-layout { grid-template-columns: 1fr; } }
+
+    /* ── Calendario ── */
+    .calendar-sidebar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      position: sticky;
+      top: 1.5rem;
+    }
+    .calendar-sidebar h3 {
+      font-size: .82rem; color: var(--muted); text-transform: uppercase;
+      letter-spacing: .06em; margin-bottom: 1rem;
     }
 
-    button {
-      background: #e4572e;
-      color: white;
-      cursor: pointer;
+    /* Calendario custom */
+    .cal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: .75rem;
+    }
+    .cal-header span { font-weight: 700; font-size: .95rem; }
+    .cal-nav { background: none; border: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; padding: .2rem .5rem; border-radius: 6px; }
+    .cal-nav:hover { background: var(--surface-2); color: var(--text); }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      text-align: center;
+    }
+    .cal-grid .day-name {
+      font-size: .72rem; color: var(--muted); padding: .3rem 0;
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    .cal-grid .day {
+      padding: .45rem 0; font-size: .85rem; border-radius: 6px;
+      cursor: pointer; transition: background .15s;
+    }
+    .cal-grid .day:hover { background: var(--surface-2); }
+    .cal-grid .day.other-month { color: #444; cursor: default; }
+    .cal-grid .day.other-month:hover { background: none; }
+    .cal-grid .day.today { color: var(--accent); font-weight: 700; }
+    .cal-grid .day.selected {
+      background: var(--accent); color: #fff; font-weight: 700;
+    }
+    .cal-grid .day.selected:hover { background: var(--accent-h); }
+
+    /* ── Storico stats ── */
+    .storico-stats {
+      display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+    }
+    .storico-stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem 1.25rem;
+      display: flex; flex-direction: column; gap: .2rem;
+    }
+    .storico-stat small { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .storico-stat strong { font-size: 1.4rem; font-weight: 700; }
+
+    /* ── Menu layout ── */
+    .menu-layout { display: grid; grid-template-columns: 1fr 340px; gap: 2rem; align-items: start; }
+    @media (max-width: 900px) { .menu-layout { grid-template-columns: 1fr; } }
+
+    .section-title {
+      font-size: .88rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .07em;
+      margin-bottom: 1rem; padding-bottom: .5rem;
+      border-bottom: 1px solid var(--border);
     }
 
-    button:hover {
-      background: #c94722;
+    .product-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    .product-table th {
+      text-align: left; padding: .6rem .75rem;
+      color: var(--muted); font-weight: 600; font-size: .75rem;
+      text-transform: uppercase; letter-spacing: .05em;
+      border-bottom: 1px solid var(--border);
+    }
+    .product-table td { padding: .65rem .75rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .product-table tr:last-child td { border-bottom: none; }
+    .product-table tr:hover td { background: var(--surface-2); }
+    .cat-header { background: var(--surface-2); color: var(--accent); font-size: .8rem; padding: .5rem .75rem; letter-spacing: .06em; }
+
+    .tag-list { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .tag { font-size: .7rem; padding: .2rem .5rem; border-radius: 999px; font-weight: 600; }
+    .tag-veg   { background: #1f4d2c; color: #97f0b0; }
+    .tag-spicy { background: #5a2f1e; color: #ffb38f; }
+    .tag-feat  { background: #5c4317; color: #ffd27a; }
+    .avail-on  { color: var(--green); font-weight: 700; font-size: .85rem; }
+    .avail-off { color: var(--red);   font-weight: 700; font-size: .85rem; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; }
+    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+    .form-group { display: flex; flex-direction: column; gap: .35rem; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: .82rem; color: var(--muted); font-weight: 500; }
+    .checkbox-row { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-top: .25rem; }
+    .checkbox-row label { display: flex; align-items: center; gap: .4rem; font-size: .88rem; color: var(--text); cursor: pointer; }
+    .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
+    .form-actions { display: flex; gap: .75rem; margin-top: 1rem; flex-wrap: wrap; }
+
+    .category-list { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 1.5rem; }
+    .category-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 8px; padding: .6rem 1rem;
+    }
+    .category-item span { font-size: .92rem; font-weight: 500; }
+    .category-item small { color: var(--muted); font-size: .78rem; margin-left: .5rem; }
+
+    .empty-state {
+      text-align: center; padding: 3rem 1rem;
+      color: var(--muted); font-size: .95rem;
     }
   </style>
 </head>
 <body>
-  <h1>Dashboard ordini</h1>
 
-  <div class="stats-grid">
-    <div class="stat-card">
-      <h3>In attesa</h3>
-      <p>{{ pending_count }}</p>
-    </div>
-    <div class="stat-card">
-      <h3>Confermati</h3>
-      <p>{{ confirmed_count }}</p>
-    </div>
-    <div class="stat-card">
-      <h3>In preparazione</h3>
-      <p>{{ preparing_count }}</p>
-    </div>
-    <div class="stat-card">
-      <h3>Pronti</h3>
-      <p>{{ ready_count }}</p>
-    </div>
-    <div class="stat-card">
-      <h3>Consegnati</h3>
-      <p>{{ delivered_count }}</p>
-    </div>
+  <header class="admin-header">
+    <h1>🍕 Admin Pizzeria</h1>
+  </header>
+
+  <nav class="tab-nav">
+    <a href="/admin"          class="{{ 'active' if active_tab == 'orders'  else '' }}">📋 Ordini oggi</a>
+    <a href="/admin/storico"  class="{{ 'active' if active_tab == 'storico' else '' }}">🗓️ Storico</a>
+    <a href="/admin/menu"     class="{{ 'active' if active_tab == 'menu'    else '' }}">🍽️ Menu</a>
+  </nav>
+
+  <div class="page">
+
+    {# ══════════════════ TAB ORDINI OGGI ══════════════════ #}
+    {% if active_tab == "orders" %}
+
+      <div class="stats-grid">
+        <div class="stat-card"><h3>In attesa</h3><p>{{ pending_count }}</p></div>
+        <div class="stat-card"><h3>Confermati</h3><p>{{ confirmed_count }}</p></div>
+        <div class="stat-card"><h3>In preparazione</h3><p>{{ preparing_count }}</p></div>
+        <div class="stat-card"><h3>Pronti</h3><p>{{ ready_count }}</p></div>
+        <div class="stat-card"><h3>Consegnati</h3><p>{{ delivered_count }}</p></div>
+      </div>
+
+      <div class="today-label">
+        📅 Ordini di oggi: <strong>{{ today_label }}</strong>
+      </div>
+
+      <form class="filter-bar" method="get" action="/admin">
+        <label>Filtra per stato:</label>
+        <select name="status" style="width:auto;">
+          <option value="">Tutti</option>
+          <option value="pending"   {% if selected_status == "pending"   %}selected{% endif %}>In attesa</option>
+          <option value="confirmed" {% if selected_status == "confirmed" %}selected{% endif %}>Confermato</option>
+          <option value="preparing" {% if selected_status == "preparing" %}selected{% endif %}>In preparazione</option>
+          <option value="ready"     {% if selected_status == "ready"     %}selected{% endif %}>Pronto</option>
+          <option value="delivered" {% if selected_status == "delivered" %}selected{% endif %}>Consegnato</option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Filtra</button>
+        {% if selected_status %}
+          <a href="/admin" class="btn btn-ghost btn-sm">✕ Rimuovi filtro</a>
+        {% endif %}
+      </form>
+
+      {% if orders_with_items %}
+        {% for entry in orders_with_items %}
+          <div class="order-card">
+            <div class="order-card-header">
+              <h2>Ordine #{{ entry.order.id }}</h2>
+              {% set s = entry.order.status %}
+              <span class="badge badge-{{ s }}">
+                {% if s == "pending" %}In attesa
+                {% elif s == "confirmed" %}Confermato
+                {% elif s == "preparing" %}In preparazione
+                {% elif s == "ready" %}Pronto
+                {% elif s == "delivered" %}Consegnato
+                {% else %}{{ s }}{% endif %}
+              </span>
+              <span style="color:var(--muted);font-size:.82rem;margin-left:auto;">
+                {{ entry.order.created_at.strftime("%H:%M") }}
+              </span>
+            </div>
+            <div class="order-info">
+              <p><strong>Cliente:</strong> {{ entry.order.customer_name }}</p>
+              <p><strong>Telefono:</strong> {{ entry.order.phone }}</p>
+              <p><strong>Tipo:</strong>
+                {% if entry.order.fulfillment_type == "delivery" %}Consegna a domicilio
+                {% elif entry.order.fulfillment_type == "pickup" %}Ritiro in negozio
+                {% else %}{{ entry.order.fulfillment_type }}{% endif %}
+              </p>
+              <p><strong>Slot:</strong> {{ entry.order.slot_label }}</p>
+              <p><strong>Indirizzo:</strong> {{ entry.order.address or "—" }}</p>
+              <p><strong>Totale:</strong> €{{ "%.2f"|format(entry.order.total_price) }}</p>
+            </div>
+            <ul class="items-list">
+              {% for item in entry["items"] %}
+                <li>{{ item.product_name }} ×{{ item.quantity }} — €{{ "%.2f"|format(item.line_total) }}</li>
+              {% endfor %}
+            </ul>
+            <form class="status-form" method="post" action="/admin/order/{{ entry.order.id }}/status">
+              <select name="status" style="width:auto;">
+                <option value="pending"   {% if entry.order.status == "pending"   %}selected{% endif %}>In attesa</option>
+                <option value="confirmed" {% if entry.order.status == "confirmed" %}selected{% endif %}>Confermato</option>
+                <option value="preparing" {% if entry.order.status == "preparing" %}selected{% endif %}>In preparazione</option>
+                <option value="ready"     {% if entry.order.status == "ready"     %}selected{% endif %}>Pronto</option>
+                <option value="delivered" {% if entry.order.status == "delivered" %}selected{% endif %}>Consegnato</option>
+              </select>
+              <button type="submit" class="btn btn-primary btn-sm">Aggiorna stato</button>
+            </form>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">🍕 Nessun ordine oggi.</div>
+      {% endif %}
+
+
+    {# ══════════════════ TAB STORICO ══════════════════ #}
+    {% elif active_tab == "storico" %}
+
+      <div class="storico-layout">
+
+        {# Calendario sidebar #}
+        <div class="calendar-sidebar">
+          <h3>📅 Seleziona data</h3>
+          <div class="cal-header">
+            <button class="cal-nav" id="cal-prev">‹</button>
+            <span id="cal-month-label"></span>
+            <button class="cal-nav" id="cal-next">›</button>
+          </div>
+          <div class="cal-grid" id="cal-grid">
+            <div class="day-name">Lu</div>
+            <div class="day-name">Ma</div>
+            <div class="day-name">Me</div>
+            <div class="day-name">Gi</div>
+            <div class="day-name">Ve</div>
+            <div class="day-name">Sa</div>
+            <div class="day-name">Do</div>
+          </div>
+          <div style="margin-top:1rem; border-top:1px solid var(--border); padding-top:1rem;">
+            <p style="font-size:.78rem; color:var(--muted); margin-bottom:.5rem;">Vai a una data specifica:</p>
+            <form method="get" action="/admin/storico" id="date-form">
+              <input type="date" name="data" id="date-input"
+                     value="{{ selected_date }}"
+                     max="{{ '' }}"
+                     style="margin-bottom:.6rem;">
+              <button type="submit" class="btn btn-primary btn-sm" style="width:100%;">Vai</button>
+            </form>
+          </div>
+        </div>
+
+        {# Contenuto storico #}
+        <div>
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem; margin-bottom:1.5rem;">
+            <h2 style="font-size:1.1rem;">
+              Ordini del <strong>{{ selected_date_label }}</strong>
+            </h2>
+          </div>
+
+          <div class="storico-stats">
+            <div class="storico-stat">
+              <small>Ordini totali</small>
+              <strong>{{ order_count }}</strong>
+            </div>
+            <div class="storico-stat">
+              <small>Incasso giornaliero</small>
+              <strong>€{{ "%.2f"|format(total_day) }}</strong>
+            </div>
+          </div>
+
+          <form class="filter-bar" method="get" action="/admin/storico">
+            <input type="hidden" name="data" value="{{ selected_date }}">
+            <label>Filtra per stato:</label>
+            <select name="status" style="width:auto;">
+              <option value="">Tutti</option>
+              <option value="pending"   {% if selected_status == "pending"   %}selected{% endif %}>In attesa</option>
+              <option value="confirmed" {% if selected_status == "confirmed" %}selected{% endif %}>Confermato</option>
+              <option value="preparing" {% if selected_status == "preparing" %}selected{% endif %}>In preparazione</option>
+              <option value="ready"     {% if selected_status == "ready"     %}selected{% endif %}>Pronto</option>
+              <option value="delivered" {% if selected_status == "delivered" %}selected{% endif %}>Consegnato</option>
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm">Filtra</button>
+            {% if selected_status %}
+              <a href="/admin/storico?data={{ selected_date }}" class="btn btn-ghost btn-sm">✕ Rimuovi filtro</a>
+            {% endif %}
+          </form>
+
+          {% if orders_with_items %}
+            {% for entry in orders_with_items %}
+              <div class="order-card">
+                <div class="order-card-header">
+                  <h2>Ordine #{{ entry.order.id }}</h2>
+                  {% set s = entry.order.status %}
+                  <span class="badge badge-{{ s }}">
+                    {% if s == "pending" %}In attesa
+                    {% elif s == "confirmed" %}Confermato
+                    {% elif s == "preparing" %}In preparazione
+                    {% elif s == "ready" %}Pronto
+                    {% elif s == "delivered" %}Consegnato
+                    {% else %}{{ s }}{% endif %}
+                  </span>
+                  <span style="color:var(--muted);font-size:.82rem;margin-left:auto;">
+                    {{ entry.order.created_at.strftime("%H:%M") }}
+                  </span>
+                </div>
+                <div class="order-info">
+                  <p><strong>Cliente:</strong> {{ entry.order.customer_name }}</p>
+                  <p><strong>Telefono:</strong> {{ entry.order.phone }}</p>
+                  <p><strong>Tipo:</strong>
+                    {% if entry.order.fulfillment_type == "delivery" %}Consegna a domicilio
+                    {% elif entry.order.fulfillment_type == "pickup" %}Ritiro in negozio
+                    {% else %}{{ entry.order.fulfillment_type }}{% endif %}
+                  </p>
+                  <p><strong>Slot:</strong> {{ entry.order.slot_label }}</p>
+                  <p><strong>Indirizzo:</strong> {{ entry.order.address or "—" }}</p>
+                  <p><strong>Totale:</strong> €{{ "%.2f"|format(entry.order.total_price) }}</p>
+                </div>
+                <ul class="items-list">
+                  {% for item in entry["items"] %}
+                    <li>{{ item.product_name }} ×{{ item.quantity }} — €{{ "%.2f"|format(item.line_total) }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state">📭 Nessun ordine in questa data.</div>
+          {% endif %}
+        </div>
+
+      </div>{# fine storico-layout #}
+
+
+    {# ══════════════════ TAB MENU ══════════════════ #}
+    {% elif active_tab == "menu" %}
+
+      <div class="menu-layout">
+        <div>
+          <p class="section-title">Prodotti</p>
+          {% if products %}
+            <div class="card" style="padding:0; overflow:hidden;">
+              <table class="product-table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Categoria</th>
+                    <th>Prezzo</th>
+                    <th>Tag</th>
+                    <th>Disponibile</th>
+                    <th>Azioni</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for cat in categories %}
+                    {% set cat_products = products | selectattr("category_id", "equalto", cat.id) | list %}
+                    {% if cat_products %}
+                      <tr><th class="cat-header" colspan="6">{{ cat.name | upper }}</th></tr>
+                      {% for p in cat_products %}
+                        <tr {% if editing_product and editing_product.id == p.id %}style="background:#1e3f5a22;"{% endif %}>
+                          <td><strong>{{ p.name }}</strong></td>
+                          <td style="color:var(--muted);">{{ cat.name }}</td>
+                          <td>€{{ "%.2f"|format(p.price) }}</td>
+                          <td>
+                            <div class="tag-list">
+                              {% if p.is_vegetarian %}<span class="tag tag-veg">🌿 Veg</span>{% endif %}
+                              {% if p.is_spicy      %}<span class="tag tag-spicy">🌶 Spicy</span>{% endif %}
+                              {% if p.is_featured   %}<span class="tag tag-feat">⭐ Top</span>{% endif %}
+                            </div>
+                          </td>
+                          <td>
+                            <form method="post" action="/admin/menu/product/{{ p.id }}/toggle" style="display:inline;">
+                              <button type="submit" class="btn btn-sm {{ 'btn-success' if p.is_available else 'btn-danger' }}" style="width:90px;">
+                                {{ '✓ Attivo' if p.is_available else '✗ Disattivo' }}
+                              </button>
+                            </form>
+                          </td>
+                          <td>
+                            <div style="display:flex;gap:.4rem;">
+                              <a href="/admin/menu/product/{{ p.id }}/edit" class="btn btn-edit btn-sm">✏️</a>
+                              <form method="post" action="/admin/menu/product/{{ p.id }}/delete"
+                                    onsubmit="return confirm('Eliminare {{ p.name }}?')">
+                                <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
+                              </form>
+                            </div>
+                          </td>
+                        </tr>
+                      {% endfor %}
+                    {% endif %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="empty-state">Nessun prodotto nel menu.</div>
+          {% endif %}
+        </div>
+
+        <div>
+          {% if editing_product %}
+            <p class="section-title">✏️ Modifica prodotto</p>
+            <div class="card">
+              <form method="post" action="/admin/menu/product/{{ editing_product.id }}/edit">
+          {% else %}
+            <p class="section-title">➕ Nuovo prodotto</p>
+            <div class="card">
+              <form method="post" action="/admin/menu/product/add">
+          {% endif %}
+                <div class="form-grid">
+                  <div class="form-group full">
+                    <label>Nome</label>
+                    <input type="text" name="name" required value="{{ editing_product.name if editing_product else '' }}">
+                  </div>
+                  <div class="form-group full">
+                    <label>Descrizione</label>
+                    <textarea name="description" required>{{ editing_product.description if editing_product else '' }}</textarea>
+                  </div>
+                  <div class="form-group">
+                    <label>Prezzo (€)</label>
+                    <input type="number" name="price" step="0.01" min="0" required value="{{ editing_product.price if editing_product else '' }}">
+                  </div>
+                  <div class="form-group">
+                    <label>Categoria</label>
+                    <select name="category_id" required>
+                      {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if editing_product and editing_product.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="form-group full">
+                    <label>URL immagine (opzionale)</label>
+                    <input type="url" name="image_url" value="{{ editing_product.image_url if editing_product and editing_product.image_url else '' }}">
+                  </div>
+                  <div class="form-group">
+                    <label>Ordine visualizzazione</label>
+                    <input type="number" name="sort_order" min="0" value="{{ editing_product.sort_order if editing_product else 0 }}">
+                  </div>
+                  <div class="form-group full">
+                    <label>Tag e visibilità</label>
+                    <div class="checkbox-row">
+                      <label><input type="checkbox" name="is_available" value="on" {% if not editing_product or editing_product.is_available %}checked{% endif %}> Disponibile</label>
+                      <label><input type="checkbox" name="is_featured"  value="on" {% if editing_product and editing_product.is_featured  %}checked{% endif %}> In evidenza ⭐</label>
+                      <label><input type="checkbox" name="is_vegetarian" value="on" {% if editing_product and editing_product.is_vegetarian %}checked{% endif %}> Vegetariano 🌿</label>
+                      <label><input type="checkbox" name="is_spicy"     value="on" {% if editing_product and editing_product.is_spicy     %}checked{% endif %}> Piccante 🌶</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary">
+                    {{ '💾 Salva modifiche' if editing_product else '➕ Aggiungi prodotto' }}
+                  </button>
+                  {% if editing_product %}
+                    <a href="/admin/menu" class="btn btn-ghost btn-sm">Annulla</a>
+                  {% endif %}
+                </div>
+              </form>
+            </div>
+
+          <p class="section-title">📂 Categorie</p>
+          <div class="card">
+            <div class="category-list">
+              {% for cat in categories %}
+                <div class="category-item">
+                  <div>
+                    <span>{{ cat.name }}</span>
+                    <small>{{ products | selectattr("category_id", "equalto", cat.id) | list | length }} prodotti</small>
+                  </div>
+                  <form method="post" action="/admin/menu/category/{{ cat.id }}/delete"
+                        onsubmit="return confirm('Eliminare la categoria {{ cat.name }}?')">
+                    <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
+                  </form>
+                </div>
+              {% else %}
+                <p style="color:var(--muted); font-size:.9rem;">Nessuna categoria.</p>
+              {% endfor %}
+            </div>
+            <form method="post" action="/admin/menu/category/add">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Nome categoria</label>
+                  <input type="text" name="name" placeholder="es. Pizze" required>
+                </div>
+                <div class="form-group">
+                  <label>Ordine</label>
+                  <input type="number" name="sort_order" value="0" min="0">
+                </div>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">➕ Aggiungi categoria</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+    {% endif %}
   </div>
 
-  <form class="filter-form" method="get" action="/admin">
-    <label for="status"><strong>Filtra per stato:</strong></label>
-    <select name="status" id="status">
-      <option value="">Tutti</option>
-      <option value="pending" {% if selected_status == "pending" %}selected{% endif %}>In attesa</option>
-      <option value="confirmed" {% if selected_status == "confirmed" %}selected{% endif %}>Confermato</option>
-      <option value="preparing" {% if selected_status == "preparing" %}selected{% endif %}>In preparazione</option>
-      <option value="ready" {% if selected_status == "ready" %}selected{% endif %}>Pronto</option>
-      <option value="delivered" {% if selected_status == "delivered" %}selected{% endif %}>Consegnato</option>
-    </select>
-    <button type="submit">Filtra</button>
-  </form>
+  <script>
+    // ── Calendario custom ──────────────────────────────────
+    (function () {
+      const grid       = document.getElementById('cal-grid');
+      const monthLabel = document.getElementById('cal-month-label');
+      const prevBtn    = document.getElementById('cal-prev');
+      const nextBtn    = document.getElementById('cal-next');
+      const dateInput  = document.getElementById('date-input');
 
-  {% if orders_with_items %}
-    {% for entry in orders_with_items %}
-      <div class="order-card">
-        <h2>
-          Ordine #{{ entry.order.id }}
+      if (!grid) return; // non siamo nella tab storico
 
-          {% if entry.order.status == "pending" %}
-            <span class="badge badge-pending">In attesa</span>
-          {% elif entry.order.status == "confirmed" %}
-            <span class="badge badge-confirmed">Confermato</span>
-          {% elif entry.order.status == "preparing" %}
-            <span class="badge badge-preparing">In preparazione</span>
-          {% elif entry.order.status == "ready" %}
-            <span class="badge badge-ready">Pronto</span>
-          {% elif entry.order.status == "delivered" %}
-            <span class="badge badge-delivered">Consegnato</span>
-          {% endif %}
-        </h2>
+      const MONTHS_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                         'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 
-        <p><strong>Cliente:</strong> {{ entry.order.customer_name }}</p>
-        <p><strong>Telefono:</strong> {{ entry.order.phone }}</p>
+      // Data selezionata dal server
+      const serverDate = dateInput ? dateInput.value : null;
+      let selected = serverDate ? new Date(serverDate + 'T12:00:00') : new Date();
+      selected.setHours(12, 0, 0, 0);
 
-        <p><strong>Tipo:</strong>
-          {% if entry.order.fulfillment_type == "delivery" %}
-            Consegna a domicilio
-          {% elif entry.order.fulfillment_type == "pickup" %}
-            Ritiro in negozio
-          {% else %}
-            {{ entry.order.fulfillment_type }}
-          {% endif %}
-        </p>
+      let viewYear  = selected.getFullYear();
+      let viewMonth = selected.getMonth();
 
-        <p><strong>Slot:</strong> {{ entry.order.slot_label }}</p>
-        <p><strong>Indirizzo:</strong> {{ entry.order.address or "-" }}</p>
-        <p><strong>Totale:</strong> €{{ "%.2f"|format(entry.order.total_price) }}</p>
+      const today = new Date();
+      today.setHours(12, 0, 0, 0);
 
-        <h3>Prodotti</h3>
-        <ul class="items-list">
-          {% for item in entry["items"] %}
-            <li>{{ item.product_name }} x{{ item.quantity }} — €{{ "%.2f"|format(item.line_total) }}</li>
-          {% endfor %}
-        </ul>
+      function isSameDay(a, b) {
+        return a.getFullYear() === b.getFullYear() &&
+               a.getMonth()   === b.getMonth()    &&
+               a.getDate()    === b.getDate();
+      }
 
-        <form class="status-form" method="post" action="/admin/order/{{ entry.order.id }}/status">
-          <select name="status">
-            <option value="pending" {% if entry.order.status == "pending" %}selected{% endif %}>In attesa</option>
-            <option value="confirmed" {% if entry.order.status == "confirmed" %}selected{% endif %}>Confermato</option>
-            <option value="preparing" {% if entry.order.status == "preparing" %}selected{% endif %}>In preparazione</option>
-            <option value="ready" {% if entry.order.status == "ready" %}selected{% endif %}>Pronto</option>
-            <option value="delivered" {% if entry.order.status == "delivered" %}selected{% endif %}>Consegnato</option>
-          </select>
-          <button type="submit">Aggiorna stato</button>
-        </form>
-      </div>
-    {% endfor %}
-  {% else %}
-    <p>Nessun ordine presente.</p>
-  {% endif %}
+      function renderCalendar() {
+        // Rimuovi celle precedenti (mantieni le intestazioni)
+        const toRemove = grid.querySelectorAll('.day');
+        toRemove.forEach(el => el.remove());
+
+        monthLabel.textContent = MONTHS_IT[viewMonth] + ' ' + viewYear;
+
+        const firstDay = new Date(viewYear, viewMonth, 1);
+        // Lunedì = 0
+        let startDow = firstDay.getDay() - 1;
+        if (startDow < 0) startDow = 6;
+
+        const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+        const daysInPrev  = new Date(viewYear, viewMonth, 0).getDate();
+
+        // Giorni mese precedente
+        for (let i = startDow - 1; i >= 0; i--) {
+          const d = document.createElement('div');
+          d.className = 'day other-month';
+          d.textContent = daysInPrev - i;
+          grid.appendChild(d);
+        }
+
+        // Giorni del mese corrente
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dt = new Date(viewYear, viewMonth, d, 12);
+          const el = document.createElement('div');
+          el.className = 'day';
+          el.textContent = d;
+
+          if (isSameDay(dt, today))    el.classList.add('today');
+          if (isSameDay(dt, selected)) el.classList.add('selected');
+
+          // Non permettere selezione di date future
+          if (dt > today) {
+            el.classList.add('other-month');
+          } else {
+            el.addEventListener('click', () => {
+              const y = dt.getFullYear();
+              const m = String(dt.getMonth() + 1).padStart(2, '0');
+              const day = String(dt.getDate()).padStart(2, '0');
+              window.location.href = '/admin/storico?data=' + y + '-' + m + '-' + day;
+            });
+          }
+
+          grid.appendChild(el);
+        }
+
+        // Riempi fino a completare la griglia (multiplo di 7)
+        const total = startDow + daysInMonth;
+        const remaining = total % 7 === 0 ? 0 : 7 - (total % 7);
+        for (let i = 1; i <= remaining; i++) {
+          const el = document.createElement('div');
+          el.className = 'day other-month';
+          el.textContent = i;
+          grid.appendChild(el);
+        }
+      }
+
+      prevBtn.addEventListener('click', () => {
+        viewMonth--;
+        if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+        renderCalendar();
+      });
+
+      nextBtn.addEventListener('click', () => {
+        viewMonth++;
+        if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+        renderCalendar();
+      });
+
+      renderCalendar();
+    })();
+  </script>
+
 </body>
 </html>
