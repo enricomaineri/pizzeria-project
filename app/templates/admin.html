@@ -71,6 +71,29 @@
     /* ── Layout ── */
     .page { padding: 2rem; max-width: 1300px; margin: 0 auto; }
 
+    /* ── Flash messages ── */
+    .flash-message {
+      border-radius: 10px;
+      padding: .85rem 1.1rem;
+      margin-bottom: 1.5rem;
+      font-size: .9rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .flash-success {
+      background: #1f4d2c;
+      border-color: #2c6b3b;
+      color: #97f0b0;
+    }
+    .flash-error {
+      background: #4d1f1f;
+      border-color: #7a2c2c;
+      color: #ff9b9b;
+    }
+
     /* ── Stats ── */
     .stats-grid {
       display: grid;
@@ -301,46 +324,46 @@
       color: var(--muted); font-size: .95rem;
     }
 
-	.live-bar {
-	display: inline-flex;
-	align-items: center;
-	gap: .55rem;
-	background: #1f4d2c;
-	color: #97f0b0;
-	border: 1px solid #2c6b3b;
-	border-radius: 999px;
-	padding: .45rem .8rem;
-	font-size: .82rem;
-	font-weight: 700;
-	margin-bottom: 1rem;
-	}
+    .live-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: .55rem;
+      background: #1f4d2c;
+      color: #97f0b0;
+      border: 1px solid #2c6b3b;
+      border-radius: 999px;
+      padding: .45rem .8rem;
+      font-size: .82rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
 
-	.live-dot {
-	width: 10px;
-	height: 10px;
-	border-radius: 50%;
-	background: #2ecc71;
-	box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7);
-	animation: livePulse 1.6s infinite;
-	}
+    .live-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #2ecc71;
+      box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7);
+      animation: livePulse 1.6s infinite;
+    }
 
-	.live-bar.paused {
-	background: #4a3b1f;
-	color: #ffd27a;
-	border-color: #6b552c;
-	}
+    .live-bar.paused {
+      background: #4a3b1f;
+      color: #ffd27a;
+      border-color: #6b552c;
+    }
 
-	.live-bar.paused .live-dot {
-	background: #f39c12;
-	animation: none;
-	box-shadow: none;
-	}
+    .live-bar.paused .live-dot {
+      background: #f39c12;
+      animation: none;
+      box-shadow: none;
+    }
 
-	@keyframes livePulse {
-	0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.70); }
-	70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
-	100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
-	}
+    @keyframes livePulse {
+      0%   { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.70); }
+      70%  { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+    }
   </style>
 </head>
 <body>
@@ -360,6 +383,13 @@
 
   <div class="page">
 
+    {% if success_message %}
+      <div class="flash-message flash-success">✅ {{ success_message }}</div>
+    {% endif %}
+    {% if error_message %}
+      <div class="flash-message flash-error">⚠️ {{ error_message }}</div>
+    {% endif %}
+
     {# ══════════════════ TAB ORDINI OGGI ══════════════════ #}
     {% if active_tab == "orders" %}
 
@@ -375,10 +405,10 @@
         📅 Ordini di oggi: <strong>{{ today_label }}</strong>
       </div>
 
-	  <div class="live-bar">
-		<span class="live-dot"></span>
-		<span id="live-status-text">LIVE · aggiornamento ogni 10s</span>
-	  </div>
+      <div class="live-bar">
+        <span class="live-dot"></span>
+        <span id="live-status-text">LIVE · aggiornamento ogni 10s</span>
+      </div>
 
       <form class="filter-bar" method="get" action="/admin">
         <label>Filtra per stato:</label>
@@ -832,85 +862,65 @@
       renderCalendar();
     })();
 
-	//aggiornamento live
-	(function () {
-    const isOrdersPage = window.location.pathname === "/admin";
-    if (!isOrdersPage) return;
+    // ── Aggiornamento live ──────────────────────────────────
+    (function () {
+      const isOrdersPage = window.location.pathname === "/admin";
+      if (!isOrdersPage) return;
 
-    const REFRESH_MS = 10000;
-    const liveBar = document.querySelector(".live-bar");
-    const liveText = document.getElementById("live-status-text");
+      const REFRESH_MS = 10000;
+      const liveBar = document.querySelector(".live-bar");
+      const liveText = document.getElementById("live-status-text");
 
-    let intervalId = null;
-    let countdownId = null;
-    let secondsLeft = REFRESH_MS / 1000;
+      let intervalId = null;
+      let countdownId = null;
+      let secondsLeft = REFRESH_MS / 1000;
 
-    function updateLabel(paused = false) {
-      if (!liveText) return;
-      if (paused) {
-        liveText.textContent = "LIVE in pausa · tab non attiva";
-      } else {
-        liveText.textContent = `LIVE · aggiornamento tra ${secondsLeft}s`;
-      }
-    }
-
-    function startCountdown() {
-      stopCountdown();
-      secondsLeft = REFRESH_MS / 1000;
-      updateLabel(false);
-
-      countdownId = setInterval(() => {
-        secondsLeft--;
-
-        if (secondsLeft <= 0) {
-          secondsLeft = REFRESH_MS / 1000;
+      function updateLabel(paused = false) {
+        if (!liveText) return;
+        if (paused) {
+          liveText.textContent = "LIVE in pausa · tab non attiva";
+        } else {
+          liveText.textContent = `LIVE · aggiornamento tra ${secondsLeft}s`;
         }
+      }
 
+      function startCountdown() {
+        stopCountdown();
+        secondsLeft = REFRESH_MS / 1000;
         updateLabel(false);
-      }, 1000);
-    }
-
-    function stopCountdown() {
-      if (countdownId) {
-        clearInterval(countdownId);
-        countdownId = null;
+        countdownId = setInterval(() => {
+          secondsLeft--;
+          if (secondsLeft <= 0) { secondsLeft = REFRESH_MS / 1000; }
+          updateLabel(false);
+        }, 1000);
       }
-    }
 
-    function startRefresh() {
-      if (intervalId) return;
-
-      if (liveBar) liveBar.classList.remove("paused");
-      startCountdown();
-
-      intervalId = setInterval(() => {
-        if (!document.hidden) {
-          window.location.reload();
-        }
-      }, REFRESH_MS);
-    }
-
-    function stopRefresh() {
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
+      function stopCountdown() {
+        if (countdownId) { clearInterval(countdownId); countdownId = null; }
       }
-      stopCountdown();
 
-      if (liveBar) liveBar.classList.add("paused");
-      updateLabel(true);
-    }
-
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        stopRefresh();
-      } else {
-        startRefresh();
+      function startRefresh() {
+        if (intervalId) return;
+        if (liveBar) liveBar.classList.remove("paused");
+        startCountdown();
+        intervalId = setInterval(() => {
+          if (!document.hidden) { window.location.reload(); }
+        }, REFRESH_MS);
       }
-    });
 
-    startRefresh();
-  	})();
+      function stopRefresh() {
+        if (intervalId) { clearInterval(intervalId); intervalId = null; }
+        stopCountdown();
+        if (liveBar) liveBar.classList.add("paused");
+        updateLabel(true);
+      }
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) { stopRefresh(); } else { startRefresh(); }
+      });
+
+      startRefresh();
+    })();
 
   </script>
 
