@@ -47,25 +47,22 @@ def slot_is_available(session: Session, fulfillment_type: str, slot_label: str) 
 def get_alternative_slots(session: Session, fulfillment_type: str, exclude_slot: str) -> List[str]:
     slots = get_slots_by_type(fulfillment_type)
     available = []
-
     for slot in slots:
         if slot == exclude_slot:
             continue
         if slot_is_available(session, fulfillment_type, slot):
             available.append(slot)
-
     return available[:3]
 
 
 @router.get("/slots")
 def get_slots(fulfillment_type: str):
-    slots = get_slots_by_type(fulfillment_type)
-    if not slots:
-        raise HTTPException(status_code=400, detail="fulfillment_type non valido")
+    if fulfillment_type not in ("delivery", "pickup"):
+        raise HTTPException(status_code=400, detail="fulfillment_type non valido: usa 'delivery' o 'pickup'")
 
     with Session(engine) as session:
         result = []
-        for slot in slots:
+        for slot in get_slots_by_type(fulfillment_type):
             result.append({
                 "label": slot,
                 "available": slot_is_available(session, fulfillment_type, slot)
@@ -75,15 +72,17 @@ def get_slots(fulfillment_type: str):
 
 @router.post("/orders/check-slot", response_model=SlotCheckResponse)
 def check_slot(payload: SlotCheckRequest):
-    if payload.fulfillment_type not in ["delivery", "pickup"]:
-        raise HTTPException(status_code=400, detail="fulfillment_type non valido")
+    valid_slots = get_slots_by_type(payload.fulfillment_type)
+    if payload.slot_label not in valid_slots:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Slot '{payload.slot_label}' non valido per {payload.fulfillment_type}"
+        )
 
     with Session(engine) as session:
         available = slot_is_available(session, payload.fulfillment_type, payload.slot_label)
         alternatives = [] if available else get_alternative_slots(
-            session,
-            payload.fulfillment_type,
-            payload.slot_label
+            session, payload.fulfillment_type, payload.slot_label
         )
 
     return SlotCheckResponse(
@@ -95,40 +94,58 @@ def check_slot(payload: SlotCheckRequest):
 
 @router.post("/orders", response_model=OrderCreateResponse)
 def create_order(payload: OrderCreate):
-    if payload.fulfillment_type not in ["delivery", "pickup"]:
-        raise HTTPException(status_code=400, detail="fulfillment_type non valido")
+    if payload.fulfillment_type == "delivery" and not (payload.address or "").strip():
+        raise HTTPException(status_code=400, detail="Indirizzo obbligatorio per la consegna a domicilio")
 
-    if payload.fulfillment_type == "delivery" and not payload.address:
-        raise HTTPException(status_code=400, detail="Indirizzo obbligatorio per consegna")
+    valid_slots = get_slots_by_type(payload.fulfillment_type)
+    if payload.slot_label not in valid_slots:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Slot '{payload.slot_label}' non valido per {payload.fulfillment_type}"
+        )
 
-    if not payload.items:
-        raise HTTPException(status_code=400, detail="Ordine vuoto")
+    # Deduplicazione: somma quantità se stesso product_id appare più volte
+    merged: dict[int, int] = {}
+    for item in payload.items:
+        merged[item.product_id] = merged.get(item.product_id, 0) + item.quantity
 
     with Session(engine) as session:
         if not slot_is_available(session, payload.fulfillment_type, payload.slot_label):
-            raise HTTPException(status_code=409, detail="Slot non disponibile")
+            raise HTTPException(status_code=409, detail="Lo slot selezionato non è più disponibile")
 
         total_price = 0.0
         order_items_to_create = []
 
-        for incoming_item in payload.items:
-            product = session.get(Product, incoming_item.product_id)
+        for product_id, quantity in merged.items():
+            product = session.get(Product, product_id)
 
             if not product:
-                raise HTTPException(status_code=404, detail=f"Prodotto {incoming_item.product_id} non trovato")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Prodotto con id {product_id} non trovato nel menu"
+                )
 
             if not product.is_available:
-                raise HTTPException(status_code=400, detail=f"{product.name} non disponibile")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"'{product.name}' non è al momento disponibile"
+                )
 
-            line_total = product.price * incoming_item.quantity
+            if quantity > 20:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Quantità massima per prodotto: 20 (richiesto {quantity} x '{product.name}')"
+                )
+
+            line_total = product.price * quantity
             total_price += line_total
 
             order_items_to_create.append({
                 "product_id": product.id,
                 "product_name": product.name,
-                "quantity": incoming_item.quantity,
+                "quantity": quantity,
                 "unit_price": product.price,
-                "line_total": line_total
+                "line_total": line_total,
             })
 
         order = Order(
@@ -138,7 +155,7 @@ def create_order(payload: OrderCreate):
             fulfillment_type=payload.fulfillment_type,
             slot_label=payload.slot_label,
             status="pending",
-            total_price=total_price
+            total_price=round(total_price, 2),
         )
 
         session.add(order)
@@ -146,15 +163,14 @@ def create_order(payload: OrderCreate):
         session.refresh(order)
 
         for item in order_items_to_create:
-            order_item = OrderItem(
+            session.add(OrderItem(
                 order_id=order.id,
                 product_id=item["product_id"],
                 product_name=item["product_name"],
                 quantity=item["quantity"],
                 unit_price=item["unit_price"],
-                line_total=item["line_total"]
-            )
-            session.add(order_item)
+                line_total=item["line_total"],
+            ))
 
         session.commit()
 
@@ -163,5 +179,5 @@ def create_order(payload: OrderCreate):
             order_id=order.id,
             status=order.status,
             total_price=order.total_price,
-            slot_label=order.slot_label
+            slot_label=order.slot_label,
         )
