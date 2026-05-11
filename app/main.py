@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -25,7 +25,7 @@ app.include_router(admin_router)
 app.include_router(auth_router)
 
 
-# ── Errori di validazione Pydantic (422) ──────────────────────────────────────
+# ── Errori di validazione Pydantic (422) ────────────────────────────────────────────
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = exc.errors()
@@ -40,24 +40,26 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-# ── Errori HTTP generici (4xx / 5xx) ─────────────────────────────────────────
+# ── Errori HTTP generici (4xx / 5xx) ───────────────────────────────────────────────
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    # Rotte API → sempre JSON
     if request.url.path.startswith("/api/"):
         return JSONResponse(
             status_code=exc.status_code,
             content={"detail": exc.detail or "Errore nella richiesta"}
         )
-    from fastapi.responses import RedirectResponse
+    # Rotte admin non autenticate → redirect al login
     if exc.status_code in (401, 403):
         return RedirectResponse(url="/admin/login", status_code=302)
+    # Tutti gli altri errori HTTP → JSON
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail or "Errore"}
     )
 
 
-# ── Catch-all: eccezioni non gestite (500) ────────────────────────────────────
+# ── Catch-all: eccezioni non gestite (500) ────────────────────────────────────────────
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     logger.exception("Eccezione non gestita su %s", request.url.path)
@@ -66,7 +68,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
             status_code=500,
             content={"detail": "Errore interno del server. Riprova tra qualche istante."}
         )
-    from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/admin", status_code=302)
 
 

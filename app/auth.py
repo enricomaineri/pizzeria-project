@@ -1,6 +1,5 @@
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
-from fastapi import Request
-from fastapi.responses import RedirectResponse
+from fastapi import Request, HTTPException
 from app.config import SECRET_KEY, ADMIN_USERNAME, ADMIN_PASSWORD
 
 SESSION_COOKIE = "admin_session"
@@ -32,9 +31,10 @@ def get_current_admin(request: Request) -> str | None:
     return verify_session_token(token)
 
 
-def require_admin(request: Request):
+def require_admin(request: Request) -> str:
     admin = get_current_admin(request)
     if not admin:
-        # RedirectResponse direttamente dalla dependency — unico modo affidabile in FastAPI
-        return RedirectResponse(url="/admin/login", status_code=302)
+        # HTTPException(401) blocca la route e viene catturata dall'exception handler
+        # in main.py che fa il redirect a /admin/login
+        raise HTTPException(status_code=401, detail="Non autenticato")
     return admin
