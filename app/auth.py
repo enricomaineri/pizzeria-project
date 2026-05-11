@@ -1,7 +1,6 @@
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
-from fastapi import Request, HTTPException
+from fastapi import Request
 from fastapi.responses import RedirectResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.config import SECRET_KEY, ADMIN_USERNAME, ADMIN_PASSWORD
 
 SESSION_COOKIE = "admin_session"
@@ -33,12 +32,9 @@ def get_current_admin(request: Request) -> str | None:
     return verify_session_token(token)
 
 
-def require_admin(request: Request) -> str:
+def require_admin(request: Request):
     admin = get_current_admin(request)
     if not admin:
-        # Usa StarletteHTTPException con redirect corretto
-        raise StarletteHTTPException(
-            status_code=302,
-            headers={"Location": "/admin/login"},
-        )
+        # RedirectResponse direttamente dalla dependency — unico modo affidabile in FastAPI
+        return RedirectResponse(url="/admin/login", status_code=302)
     return admin
