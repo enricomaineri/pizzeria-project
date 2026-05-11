@@ -10,10 +10,7 @@ from app.auth import (
     get_current_admin,
 )
 from app.config import IS_PRODUCTION
-
-# Il limiter è registrato sull'app in main.py;
-# lo importiamo qui solo per usare il decorator @limiter.limit
-from app.main import limiter
+from app.limiter import limiter  # ← importa dal modulo dedicato, non da main
 
 router = APIRouter(tags=["auth"])
 templates = Jinja2Templates(directory="app/templates")
@@ -27,7 +24,7 @@ def login_page(request: Request):
 
 
 @router.post("/admin/login")
-@limiter.limit("5/minute")  # max 5 tentativi di login al minuto per IP
+@limiter.limit("5/minute")
 def login_submit(
     request: Request,
     username: str = Form(...),
@@ -40,9 +37,9 @@ def login_submit(
             key=SESSION_COOKIE,
             value=token,
             max_age=SESSION_MAX_AGE,
-            httponly=True,          # non accessibile da JS → protegge da XSS
-            samesite="lax",         # protegge da CSRF
-            secure=IS_PRODUCTION,   # True in produzione (HTTPS), False in sviluppo locale
+            httponly=True,
+            samesite="lax",
+            secure=IS_PRODUCTION,
         )
         return response
 
