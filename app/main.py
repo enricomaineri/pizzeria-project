@@ -5,6 +5,9 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.api.router import router
 from app.api.orders import router as orders_router
@@ -15,7 +18,14 @@ from app.seed import seed_data
 
 logger = logging.getLogger("pizzeria")
 
+# ── Rate limiter (chiave = IP del client) ─────────────────────────────────────
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="Pizzeria Project")
+
+# Registra il limiter e il suo error handler sull'app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
@@ -25,7 +35,7 @@ app.include_router(admin_router)
 app.include_router(auth_router)
 
 
-# ── Errori di validazione Pydantic (422) ────────────────────────────────────────────
+# ── Errori di validazione Pydantic (422) ──────────────────────────────────────
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = exc.errors()
@@ -40,7 +50,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-# ── Errori HTTP generici (4xx / 5xx) ───────────────────────────────────────────────
+# ── Errori HTTP generici (4xx / 5xx) ─────────────────────────────────────────
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     # Rotte API → sempre JSON
@@ -59,7 +69,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     )
 
 
-# ── Catch-all: eccezioni non gestite (500) ────────────────────────────────────────────
+# ── Catch-all: eccezioni non gestite (500) ────────────────────────────────────
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     logger.exception("Eccezione non gestita su %s", request.url.path)
