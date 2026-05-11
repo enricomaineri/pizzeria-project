@@ -23,6 +23,8 @@ MAX_ORDERS_PER_SLOT = {
     "pickup": 5,
 }
 
+MAX_QUANTITY_PER_PRODUCT = 20
+
 
 def get_slots_by_type(fulfillment_type: str) -> List[str]:
     if fulfillment_type == "delivery":
@@ -104,10 +106,23 @@ def create_order(payload: OrderCreate):
             detail=f"Slot '{payload.slot_label}' non valido per {payload.fulfillment_type}"
         )
 
-    # Deduplicazione: somma quantità se stesso product_id appare più volte
+    # Deduplicazione: somma quantità se stesso product_id appare più volte.
+    # Il controllo MAX_QUANTITY_PER_PRODUCT viene fatto DOPO la merge,
+    # così 15 + 10 = 25 viene correttamente bloccato.
     merged: dict[int, int] = {}
     for item in payload.items:
         merged[item.product_id] = merged.get(item.product_id, 0) + item.quantity
+
+    # Controllo quantità post-merge (prima di toccare il DB)
+    for product_id, quantity in merged.items():
+        if quantity > MAX_QUANTITY_PER_PRODUCT:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Quantità massima per prodotto: {MAX_QUANTITY_PER_PRODUCT} "
+                    f"(richiesto {quantity} per product_id={product_id})"
+                )
+            )
 
     with Session(engine) as session:
         if not slot_is_available(session, payload.fulfillment_type, payload.slot_label):
@@ -129,12 +144,6 @@ def create_order(payload: OrderCreate):
                 raise HTTPException(
                     status_code=400,
                     detail=f"'{product.name}' non è al momento disponibile"
-                )
-
-            if quantity > 20:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Quantità massima per prodotto: 20 (richiesto {quantity} x '{product.name}')"
                 )
 
             line_total = product.price * quantity

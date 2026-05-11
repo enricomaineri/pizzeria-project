@@ -21,3 +21,8 @@ def _require(key: str) -> str:
 ADMIN_USERNAME = _require("ADMIN_USERNAME")
 ADMIN_PASSWORD = _require("ADMIN_PASSWORD")
 SECRET_KEY     = _require("SECRET_KEY")
+
+# "production" abilita cookie secure (HTTPS obbligatorio) e altri hardening.
+# In sviluppo locale usa il default "development" oppure ometti la variabile.
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
+IS_PRODUCTION = ENVIRONMENT == "production"

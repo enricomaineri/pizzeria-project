@@ -9,6 +9,7 @@ from app.auth import (
     SESSION_MAX_AGE,
     get_current_admin,
 )
+from app.config import IS_PRODUCTION
 
 # Il limiter è registrato sull'app in main.py;
 # lo importiamo qui solo per usare il decorator @limiter.limit
@@ -39,9 +40,9 @@ def login_submit(
             key=SESSION_COOKIE,
             value=token,
             max_age=SESSION_MAX_AGE,
-            httponly=True,   # non accessibile da JS → protegge da XSS
-            samesite="lax",  # protegge da CSRF
-            # secure=True,   # decommentare in produzione con HTTPS
+            httponly=True,          # non accessibile da JS → protegge da XSS
+            samesite="lax",         # protegge da CSRF
+            secure=IS_PRODUCTION,   # True in produzione (HTTPS), False in sviluppo locale
         )
         return response
 
