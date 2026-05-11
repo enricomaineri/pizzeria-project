@@ -24,6 +24,65 @@ document.addEventListener("DOMContentLoaded", () => {
     phone: "",
   };
 
+  // ── Validatori ───────────────────────────────────────────────────────────────
+
+  /**
+   * Normalizza un numero di telefono italiano:
+   * - rimuove spazi, trattini, punti
+   * - rimuove prefisso +39 o 0039
+   * Restituisce la stringa pulita (solo cifre).
+   */
+  function normalizePhone(raw) {
+    let n = raw.trim().replace(/[\s\-\.]/g, "");
+    if (n.startsWith("+39")) n = n.slice(3);
+    else if (n.startsWith("0039")) n = n.slice(4);
+    return n;
+  }
+
+  /**
+   * Valida nome: almeno 2 caratteri, solo lettere (incluse accentate), spazi e apostrofi.
+   * Restituisce null se valido, altrimenti una stringa con il motivo dell'errore.
+   */
+  function validateName(value) {
+    const trimmed = value.trim();
+    if (trimmed.length < 2) return "Il nome deve avere almeno 2 caratteri.";
+    if (trimmed.length > 100) return "Il nome è troppo lungo (max 100 caratteri).";
+    if (!/^[a-zA-ZÀ-ÖØ-öø-ÿ' ]+$/.test(trimmed))
+      return "Il nome può contenere solo lettere, spazi e apostrofi.";
+    return null;
+  }
+
+  /**
+   * Valida numero di telefono italiano:
+   * - dopo normalizzazione deve essere di 10 cifre
+   * - deve iniziare con 0 (fisso) o 3 (mobile)
+   */
+  function validatePhone(value) {
+    const n = normalizePhone(value);
+    if (!/^\d+$/.test(n)) return "Il numero deve contenere solo cifre.";
+    if (n.length !== 10) return `Il numero deve avere 10 cifre (ne hai inserite ${n.length}).`;
+    if (!/^[03]/.test(n)) return "Il numero deve iniziare con 0 (fisso) o 3 (cellulare).";
+    return null;
+  }
+
+  /**
+   * Valida indirizzo di consegna:
+   * - lunghezza minima 8 caratteri
+   * - deve contenere almeno una parola + un numero civico
+   *   (es. "Via Roma 5", "Corso Vittorio 12/A", "Piazza del Duomo 3")
+   */
+  function validateAddress(value) {
+    const trimmed = value.trim();
+    if (trimmed.length < 8) return "L'indirizzo è troppo corto. Inserisci via, nome via e numero civico.";
+    if (trimmed.length > 300) return "L'indirizzo è troppo lungo (max 300 caratteri).";
+    // Deve contenere almeno una lettera e almeno un numero
+    if (!/[a-zA-ZÀ-ÖØ-öø-ÿ]/.test(trimmed)) return "L'indirizzo deve contenere il nome della via.";
+    if (!/\d/.test(trimmed)) return "L'indirizzo deve includere il numero civico.";
+    return null;
+  }
+
+  // ── Helpers UI ───────────────────────────────────────────────────────────────
+
   function euro(value) {
     return `€${Number(value).toFixed(2)}`;
   }
@@ -36,13 +95,20 @@ document.addEventListener("DOMContentLoaded", () => {
     chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
   }
 
+  function addErrorMessage(text) {
+    const message = document.createElement("div");
+    message.className = "chatbot-message bot chatbot-error";
+    message.innerHTML = `⚠️ ${text}`;
+    chatbotMessages.appendChild(message);
+    chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+  }
+
   function clearQuickActions() {
     chatbotQuickActions.innerHTML = "";
   }
 
   function setQuickActions(actions) {
     chatbotQuickActions.innerHTML = "";
-
     actions.forEach((action) => {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -57,6 +123,8 @@ document.addEventListener("DOMContentLoaded", () => {
     chatbotInput.value = "";
     chatbotInput.placeholder = placeholder;
   }
+
+  // ── Menu helpers ─────────────────────────────────────────────────────────────
 
   function getCategoryProducts(category) {
     if (!category) return [];
@@ -86,14 +154,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderCartSummary() {
     if (!state.cart.length) return "Carrello vuoto.";
-
     const rows = state.cart
-      .map(
-        (item) =>
-          `- ${item.product_name} x${item.quantity} (${euro(item.unit_price)} cad.)`
-      )
+      .map((item) => `- ${item.product_name} x${item.quantity} (${euro(item.unit_price)} cad.)`)
       .join("<br>");
-
     return `
       <div class="chatbot-summary">
         <strong>Carrello attuale</strong><br>
@@ -103,18 +166,17 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   }
 
+  // ── Flow ─────────────────────────────────────────────────────────────────────
+
   function startOrderFlow() {
     state.step = "choose_category";
     addMessage("Perfetto, iniziamo. Scegli una categoria del menu.");
-
     const categories = getAvailableCategories();
-
     if (!categories.length) {
       addMessage("Non trovo categorie con prodotti disponibili nel menu.");
       setQuickActions([{ label: "Riprova", onClick: resetChatbot }]);
       return;
     }
-
     setQuickActions(
       categories.map((category) => ({
         label: category.name,
@@ -125,20 +187,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function chooseCategory(categorySlug) {
     state.selectedCategory = categorySlug;
-
     const category = state.categories.find((c) => c.slug === categorySlug);
     addMessage(category?.name || categorySlug, "user");
-
     const products = getProductsByCategorySlug(categorySlug).filter(isProductAvailable);
-
     if (!products.length) {
       addMessage("In questa categoria non ci sono prodotti disponibili. Scegline un'altra.");
       return startOrderFlow();
     }
-
     state.step = "choose_product";
     addMessage("Ora scegli un prodotto.");
-
     setQuickActions(
       products.slice(0, 8).map((product) => ({
         label: `${product.name} · ${euro(product.price)}`,
@@ -151,9 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
     state.selectedProduct = product;
     addMessage(product.name, "user");
     addMessage(`Quante unità di <strong>${product.name}</strong> vuoi ordinare? Scegli una quantità.`);
-
     state.step = "choose_quantity";
-
     setQuickActions([
       { label: "1", onClick: () => setQuantity(1) },
       { label: "2", onClick: () => setQuantity(2) },
@@ -164,15 +219,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function setQuantity(quantity) {
     addMessage(String(quantity), "user");
-
     const product = state.selectedProduct;
     if (!product) {
       addMessage("Non riesco a capire quale prodotto stai ordinando. Ripartiamo.");
       return resetChatbot();
     }
-
     const existing = state.cart.find((item) => item.product_id === product.id);
-
     if (existing) {
       existing.quantity += quantity;
     } else {
@@ -183,10 +235,8 @@ document.addEventListener("DOMContentLoaded", () => {
         unit_price: product.price,
       });
     }
-
     addMessage(`Aggiunto <strong>${product.name}</strong> x${quantity} al carrello.`);
     addMessage(renderCartSummary());
-
     state.selectedProduct = null;
     askAddMore();
   }
@@ -204,9 +254,7 @@ document.addEventListener("DOMContentLoaded", () => {
     addMessage("Sì, aggiungi ancora", "user");
     addMessage("Perfetto. Scegli una categoria per continuare.");
     state.step = "choose_category";
-
     const categories = getAvailableCategories();
-
     setQuickActions(
       categories.map((category) => ({
         label: category.name,
@@ -219,7 +267,6 @@ document.addEventListener("DOMContentLoaded", () => {
     addMessage("No, continua", "user");
     addMessage("Preferisci consegna o ritiro?");
     state.step = "choose_fulfillment";
-
     setQuickActions([
       { label: "🚚 Consegna", onClick: () => setFulfillmentType("delivery") },
       { label: "🏠 Ritiro", onClick: () => setFulfillmentType("pickup") },
@@ -229,15 +276,13 @@ document.addEventListener("DOMContentLoaded", () => {
   function setFulfillmentType(type) {
     state.fulfillmentType = type;
     addMessage(type === "delivery" ? "Consegna" : "Ritiro", "user");
-
     if (type === "delivery") {
       state.step = "enter_address";
       clearQuickActions();
-      resetInput("Inserisci il tuo indirizzo completo");
-      addMessage("Perfetto. Inserisci il tuo indirizzo completo.");
+      resetInput("Es: Via Roma 12, Milano");
+      addMessage("Perfetto. Inserisci il tuo indirizzo completo (via + numero civico).");
       return;
     }
-
     state.address = "";
     loadSlots();
   }
@@ -246,26 +291,20 @@ document.addEventListener("DOMContentLoaded", () => {
     state.step = "loading_slots";
     clearQuickActions();
     chatbotStatus.textContent = "Caricamento slot...";
-
     try {
       const response = await fetch(`/api/slots?fulfillment_type=${state.fulfillmentType}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
       const data = await response.json();
       const availableSlots = (data.slots || []).filter((slot) => slot.available);
-
       chatbotStatus.textContent = "Menu collegato";
-
       if (!availableSlots.length) {
         addMessage("Al momento non ci sono slot disponibili. Riprova più tardi.");
         setQuickActions([{ label: "Nuovo ordine", onClick: resetChatbot }]);
         state.step = "done";
         return;
       }
-
       addMessage("Ecco gli slot disponibili. Scegli un orario.");
       state.step = "choose_slot";
-
       setQuickActions(
         availableSlots.map((slot) => ({
           label: slot.label,
@@ -283,37 +322,27 @@ document.addEventListener("DOMContentLoaded", () => {
     state.slotLabel = slotLabel;
     addMessage(slotLabel, "user");
     addMessage("Controllo la disponibilità effettiva dello slot selezionato...");
-
     state.step = "checking_slot";
     clearQuickActions();
-
     try {
       const response = await fetch("/api/orders/check-slot", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fulfillment_type: state.fulfillmentType,
           slot_label: slotLabel,
         }),
       });
-
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
       const data = await response.json();
-
       if (data.available) {
         showFinalSummary();
         return;
       }
-
       addMessage("Questo slot non è più disponibile.");
-
       if (data.alternatives && data.alternatives.length) {
         addMessage("Ti propongo alcuni orari alternativi.");
         state.step = "choose_alternative_slot";
-
         setQuickActions(
           data.alternatives.map((slot) => ({
             label: slot,
@@ -333,14 +362,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showFinalSummary() {
     state.step = "summary";
-
     const rows = state.cart
-      .map(
-        (item) =>
-          `- ${item.product_name} x${item.quantity} = ${euro(item.quantity * item.unit_price)}`
-      )
+      .map((item) => `- ${item.product_name} x${item.quantity} = ${euro(item.quantity * item.unit_price)}`)
       .join("<br>");
-
     addMessage(`
       <div class="chatbot-summary">
         <strong>Riepilogo finale</strong><br><br>
@@ -351,8 +375,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <strong>Slot:</strong> ${state.slotLabel}
       </div>
     `);
-
-    addMessage("Confermi l’ordine?");
+    addMessage("Confermi l'ordine?");
     setQuickActions([
       { label: "✅ Conferma ordine", onClick: askCustomerInfo },
       { label: "❌ Annulla", onClick: resetChatbot },
@@ -361,15 +384,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function askCustomerInfo() {
     addMessage("✅ Conferma ordine", "user");
-    addMessage("Perfetto. Inserisci il tuo nome.");
+    addMessage("Perfetto. Inserisci il tuo nome e cognome.");
     clearQuickActions();
-    resetInput("Inserisci il tuo nome");
+    resetInput("Es: Mario Rossi");
     state.step = "enter_name";
   }
 
   function askPhone() {
-    addMessage("Perfetto. Ora inserisci il tuo numero di telefono.");
-    resetInput("Inserisci il tuo numero di telefono");
+    addMessage(
+      "Perfetto. Ora inserisci il tuo numero di telefono (10 cifre, es: 3201234567)."
+    );
+    resetInput("Es: 3201234567");
     state.step = "enter_phone";
   }
 
@@ -377,7 +402,6 @@ document.addEventListener("DOMContentLoaded", () => {
     state.step = "submitting";
     addMessage("Sto salvando il tuo ordine nel database...");
     clearQuickActions();
-
     try {
       const payload = {
         customer_name: state.customerName,
@@ -390,32 +414,31 @@ document.addEventListener("DOMContentLoaded", () => {
           quantity: item.quantity,
         })),
       };
-
       const response = await fetch("/api/orders", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       if (!response.ok) {
-        const err = await response.text();
-        throw new Error(err || `HTTP ${response.status}`);
+        const errData = await response.json().catch(() => ({}));
+        const detail = Array.isArray(errData.detail)
+          ? errData.detail.join(" | ")
+          : errData.detail || `Errore HTTP ${response.status}`;
+        addErrorMessage(detail);
+        setQuickActions([{ label: "Riprova", onClick: submitOrder }]);
+        state.step = "enter_phone";
+        return;
       }
-
       const data = await response.json();
-
       addMessage(`
         <div class="chatbot-summary">
-          <strong>Ordine ricevuto</strong><br>
-          ID ordine: ${data.order_id}<br>
+          <strong>Ordine ricevuto ✅</strong><br>
+          ID ordine: <strong>${data.order_id}</strong><br>
           Stato: ${data.status}<br>
           Totale: ${euro(data.total_price)}<br>
           Slot: ${data.slot_label}
         </div>
       `);
-
       addMessage("Grazie! Il tuo ordine è stato registrato correttamente.");
       setQuickActions([
         { label: "Nuovo ordine", onClick: resetChatbot },
@@ -423,7 +446,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ]);
       state.step = "done";
     } catch (error) {
-      addMessage("Non sono riuscito a salvare l’ordine. Controlla backend e database.");
+      addErrorMessage("Non sono riuscito a salvare l'ordine. Controlla la connessione e riprova.");
       console.error("Errore salvataggio ordine:", error);
       setQuickActions([{ label: "Riprova", onClick: submitOrder }]);
     }
@@ -449,28 +472,23 @@ document.addEventListener("DOMContentLoaded", () => {
     initChatbot(true);
   }
 
+  // ── Init ─────────────────────────────────────────────────────────────────────
+
   async function initChatbot(fromReset = false) {
     try {
       chatbotStatus.textContent = "Caricamento menu...";
-
       if (!fromReset) {
-        addMessage("Ciao, sono l’Assistente Vesuvio.");
+        addMessage("Ciao, sono l'Assistente Vesuvio.");
       }
-
       addMessage("Sto caricando il menu reale dal database...");
-
       const response = await fetch("/api/menu");
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
       const data = await response.json();
-
       state.categories = Array.isArray(data.categories) ? data.categories : [];
       state.products = state.categories.flatMap((category) => getCategoryProducts(category));
-
       chatbotStatus.textContent = "Menu collegato";
       addMessage("Perfetto, il menu è pronto.");
-      addMessage("Premi qui sotto per iniziare l’ordine.");
-
+      addMessage("Premi qui sotto per iniziare l'ordine.");
       state.step = "ready";
       setQuickActions([{ label: "🍕 Ordina ora", onClick: startOrderFlow }]);
     } catch (error) {
@@ -480,29 +498,52 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // ── Input handler ─────────────────────────────────────────────────────────────
+
   chatbotSendBtn.addEventListener("click", () => {
     const value = chatbotInput.value.trim();
     if (!value) return;
 
+    // ── Indirizzo ──────────────────────────────────────────────────────────────
     if (state.step === "enter_address") {
-      state.address = value;
+      const err = validateAddress(value);
+      if (err) {
+        addErrorMessage(err);
+        chatbotInput.focus();
+        return;
+      }
+      state.address = value.trim();
       addMessage(value, "user");
       resetInput();
       loadSlots();
       return;
     }
 
+    // ── Nome ───────────────────────────────────────────────────────────────────
     if (state.step === "enter_name") {
-      state.customerName = value;
+      const err = validateName(value);
+      if (err) {
+        addErrorMessage(err);
+        chatbotInput.focus();
+        return;
+      }
+      state.customerName = value.trim();
       addMessage(value, "user");
       chatbotInput.value = "";
       askPhone();
       return;
     }
 
+    // ── Telefono ───────────────────────────────────────────────────────────────
     if (state.step === "enter_phone") {
-      state.phone = value;
-      addMessage(value, "user");
+      const err = validatePhone(value);
+      if (err) {
+        addErrorMessage(err);
+        chatbotInput.focus();
+        return;
+      }
+      state.phone = normalizePhone(value); // salva sempre normalizzato
+      addMessage(value, "user");           // mostra quello che ha scritto
       chatbotInput.value = "";
       submitOrder();
       return;
