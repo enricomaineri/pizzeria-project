@@ -168,6 +168,110 @@ def admin_storico(
 
 
 # ─────────────────────────────────────────────
+# ORDINE TELEFONICO (inserimento manuale)
+# ─────────────────────────────────────────────
+
+@router.get("/admin/telefono", response_class=HTMLResponse)
+def admin_telefono(
+    request: Request,
+    success: str | None = None,
+    error: str | None = None,
+    _admin: str = Depends(require_admin),
+):
+    with Session(engine) as session:
+        categories = session.exec(select(Category).order_by(Category.sort_order)).all()
+        products   = session.exec(
+            select(Product)
+            .where(Product.is_available == True)
+            .order_by(Product.category_id, Product.sort_order)
+        ).all()
+        # Slot suggeriti: da adesso a 3 ore, ogni 15 minuti
+        now = datetime.now(timezone.utc)
+        slots = []
+        start = now.replace(minute=(now.minute // 15 + 1) * 15 % 60,
+                            second=0, microsecond=0)
+        if (now.minute // 15 + 1) * 15 >= 60:
+            start = start + timedelta(hours=1)
+        for i in range(12):  # 12 slot = 3 ore
+            t = start + timedelta(minutes=15 * i)
+            slots.append(t.strftime("%H:%M"))
+
+    return templates.TemplateResponse(request, "admin.html", {
+        "active_tab":      "telefono",
+        "categories":      categories,
+        "products":        products,
+        "slots":           slots,
+        "success_message": success,
+        "error_message":   error,
+    })
+
+
+@router.post("/admin/telefono")
+def admin_telefono_post(
+    customer_name:    str   = Form(...),
+    phone:            str   = Form(...),
+    fulfillment_type: str   = Form(...),
+    slot_label:       str   = Form(...),
+    address:          str   = Form(""),
+    status:           str   = Form("confirmed"),
+    # items: lista di product_id e quantity codificati come campi ripetuti
+    product_ids:      list[int]   = Form(default=[]),
+    quantities:       list[int]   = Form(default=[]),
+    _admin: str = Depends(require_admin),
+):
+    # Filtro righe con quantità > 0
+    items_raw = [(pid, qty) for pid, qty in zip(product_ids, quantities) if qty > 0]
+
+    if not items_raw:
+        return redirect_with_message("/admin/telefono", error="Aggiungi almeno un prodotto all'ordine.")
+
+    with Session(engine) as session:
+        order_items = []
+        total = 0.0
+
+        for product_id, quantity in items_raw:
+            product = session.get(Product, product_id)
+            if not product:
+                continue
+            line_total = round(product.price * quantity, 2)
+            total += line_total
+            order_items.append(OrderItem(
+                product_id   = product.id,
+                product_name = product.name,
+                quantity     = quantity,
+                unit_price   = product.price,
+                line_total   = line_total,
+            ))
+
+        if not order_items:
+            return redirect_with_message("/admin/telefono", error="Nessun prodotto valido selezionato.")
+
+        order = Order(
+            customer_name    = customer_name.strip(),
+            phone            = phone.strip(),
+            address          = address.strip() or None,
+            fulfillment_type = fulfillment_type,
+            slot_label       = slot_label,
+            status           = status,
+            total_price      = round(total, 2),
+        )
+        session.add(order)
+        session.flush()  # ottieni order.id
+
+        for item in order_items:
+            item.order_id = order.id
+            session.add(item)
+
+        session.commit()
+        order_id = order.id
+
+    return redirect_with_message(
+        "/admin",
+        success=f"Ordine #{order_id} creato con successo — {customer_name.strip()} alle {slot_label}."
+    )
+
+
+# ─────────────────────────────────────────────
 # GESTIONE MENU
 # ─────────────────────────────────────────────
 

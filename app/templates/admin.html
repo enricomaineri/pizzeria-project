@@ -364,6 +364,96 @@
       70%  { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
       100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
     }
+
+    /* ── Tab Telefono ── */
+    .tel-layout {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 2rem;
+      align-items: start;
+    }
+    @media (max-width: 900px) { .tel-layout { grid-template-columns: 1fr; } }
+
+    .tel-product-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .6rem .75rem;
+      border-radius: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      gap: .75rem;
+      transition: border-color .15s;
+    }
+    .tel-product-row:has(.qty-input:not([value="0"])):has(.qty-input[value]) {
+      border-color: var(--accent);
+    }
+    .tel-product-row.in-cart {
+      border-color: var(--accent);
+      background: #2a1a12;
+    }
+    .tel-product-info { flex: 1; min-width: 0; }
+    .tel-product-name { font-size: .9rem; font-weight: 600; }
+    .tel-product-price { font-size: .78rem; color: var(--muted); margin-top: .1rem; }
+
+    .qty-stepper {
+      display: flex;
+      align-items: center;
+      gap: .3rem;
+    }
+    .qty-btn {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+      flex-shrink: 0;
+    }
+    .qty-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .qty-input {
+      width: 42px !important;
+      text-align: center;
+      padding: .3rem .2rem !important;
+      font-size: .9rem;
+      border-radius: 6px;
+    }
+
+    /* riepilogo carrello */
+    .cart-summary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      position: sticky;
+      top: 1.5rem;
+    }
+    .cart-summary h3 {
+      font-size: .82rem; color: var(--muted); text-transform: uppercase;
+      letter-spacing: .06em; margin-bottom: 1rem;
+    }
+    .cart-lines { display: flex; flex-direction: column; gap: .45rem; margin-bottom: 1rem; min-height: 60px; }
+    .cart-line {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: .88rem;
+    }
+    .cart-line-name { color: var(--text); flex: 1; }
+    .cart-line-price { color: var(--muted); white-space: nowrap; margin-left: .5rem; }
+    .cart-empty { color: var(--muted); font-size: .85rem; font-style: italic; }
+    .cart-total {
+      display: flex; justify-content: space-between;
+      font-weight: 700; font-size: 1rem;
+      border-top: 1px solid var(--border); padding-top: .75rem; margin-top: .75rem;
+    }
+    .cat-section-title {
+      font-size: .75rem; font-weight: 700; color: var(--accent);
+      text-transform: uppercase; letter-spacing: .07em;
+      margin: 1.25rem 0 .6rem;
+    }
   </style>
 </head>
 <body>
@@ -376,9 +466,10 @@
 </header>
 
   <nav class="tab-nav">
-    <a href="/admin"          class="{{ 'active' if active_tab == 'orders'  else '' }}">📋 Ordini oggi</a>
-    <a href="/admin/storico"  class="{{ 'active' if active_tab == 'storico' else '' }}">🗓️ Storico</a>
-    <a href="/admin/menu"     class="{{ 'active' if active_tab == 'menu'    else '' }}">🍽️ Menu</a>
+    <a href="/admin"           class="{{ 'active' if active_tab == 'orders'   else '' }}">📋 Ordini oggi</a>
+    <a href="/admin/storico"   class="{{ 'active' if active_tab == 'storico'  else '' }}">🗓️ Storico</a>
+    <a href="/admin/menu"      class="{{ 'active' if active_tab == 'menu'     else '' }}">🍽️ Menu</a>
+    <a href="/admin/telefono"  class="{{ 'active' if active_tab == 'telefono' else '' }}">📞 Ordine telefonico</a>
   </nav>
 
   <div class="page">
@@ -593,6 +684,127 @@
       </div>{# fine storico-layout #}
 
 
+    {# ══════════════════ TAB TELEFONO ══════════════════ #}
+    {% elif active_tab == "telefono" %}
+
+      <div style="margin-bottom:1.5rem;">
+        <h2 style="font-size:1.15rem; font-weight:700; margin-bottom:.3rem;">📞 Ordine telefonico</h2>
+        <p style="color:var(--muted); font-size:.88rem;">Inserisci l'ordine ricevuto per telefono. Il totale viene calcolato automaticamente.</p>
+      </div>
+
+      <form method="post" action="/admin/telefono" id="tel-form">
+        <div class="tel-layout">
+
+          {# ── Colonna sinistra: prodotti ── #}
+          <div>
+            <p class="section-title">🛒 Seleziona prodotti</p>
+
+            {% set ns = namespace(current_cat_id=None) %}
+            {% for p in products %}
+              {% if p.category_id != ns.current_cat_id %}
+                {% set ns.current_cat_id = p.category_id %}
+                {% for cat in categories %}
+                  {% if cat.id == p.category_id %}
+                    <div class="cat-section-title">{{ cat.name }}</div>
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+
+              <div class="tel-product-row" id="row-{{ p.id }}">
+                <div class="tel-product-info">
+                  <div class="tel-product-name">{{ p.name }}</div>
+                  <div class="tel-product-price">€{{ "%.2f"|format(p.price) }}</div>
+                </div>
+                <div class="qty-stepper">
+                  <button type="button" class="qty-btn" onclick="changeQty({{ p.id }}, -1)">−</button>
+                  <input
+                    type="number"
+                    class="qty-input"
+                    id="qty-{{ p.id }}"
+                    name="quantities"
+                    value="0"
+                    min="0"
+                    max="20"
+                    data-price="{{ p.price }}"
+                    data-name="{{ p.name }}"
+                    data-pid="{{ p.id }}"
+                    oninput="syncCart()"
+                  >
+                  <input type="hidden" name="product_ids" value="{{ p.id }}">
+                  <button type="button" class="qty-btn" onclick="changeQty({{ p.id }}, 1)">+</button>
+                </div>
+              </div>
+            {% else %}
+              <div class="empty-state">Nessun prodotto disponibile nel menu.</div>
+            {% endfor %}
+          </div>
+
+          {# ── Colonna destra: dati cliente + riepilogo ── #}
+          <div>
+            <div class="cart-summary" style="margin-bottom:1.5rem;">
+              <h3>🧾 Riepilogo ordine</h3>
+              <div class="cart-lines" id="cart-lines">
+                <span class="cart-empty">Nessun prodotto aggiunto</span>
+              </div>
+              <div class="cart-total">
+                <span>Totale</span>
+                <span id="cart-total">€0.00</span>
+              </div>
+            </div>
+
+            <p class="section-title">👤 Dati cliente</p>
+            <div class="card">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Nome cliente *</label>
+                  <input type="text" name="customer_name" required placeholder="Mario Rossi">
+                </div>
+                <div class="form-group">
+                  <label>Telefono *</label>
+                  <input type="text" name="phone" required placeholder="333 1234567">
+                </div>
+                <div class="form-group">
+                  <label>Tipo ordine *</label>
+                  <select name="fulfillment_type" id="fulfillment-type" onchange="toggleAddress()" required>
+                    <option value="pickup">Ritiro in negozio</option>
+                    <option value="delivery">Consegna a domicilio</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Orario di consegna/ritiro *</label>
+                  <select name="slot_label" required>
+                    {% for slot in slots %}
+                      <option value="{{ slot }}">{{ slot }}</option>
+                    {% endfor %}
+                    <option value="__custom__" id="custom-slot-option">Altro orario…</option>
+                  </select>
+                </div>
+                <div class="form-group full" id="address-group" style="display:none;">
+                  <label>Indirizzo di consegna</label>
+                  <input type="text" name="address" id="address-input" placeholder="Via Roma 12, Milano">
+                </div>
+                <div class="form-group full">
+                  <label>Stato iniziale ordine</label>
+                  <select name="status">
+                    <option value="confirmed" selected>Confermato</option>
+                    <option value="preparing">In preparazione</option>
+                    <option value="pending">In attesa</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="submit-btn" disabled>
+                  📋 Registra ordine
+                </button>
+                <button type="reset" class="btn btn-ghost btn-sm" onclick="resetForm()">🗑️ Svuota</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </form>
+
+
     {# ══════════════════ TAB MENU ══════════════════ #}
     {% elif active_tab == "menu" %}
 
@@ -766,12 +978,11 @@
       const nextBtn    = document.getElementById('cal-next');
       const dateInput  = document.getElementById('date-input');
 
-      if (!grid) return; // non siamo nella tab storico
+      if (!grid) return;
 
       const MONTHS_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
                          'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 
-      // Data selezionata dal server
       const serverDate = dateInput ? dateInput.value : null;
       let selected = serverDate ? new Date(serverDate + 'T12:00:00') : new Date();
       selected.setHours(12, 0, 0, 0);
@@ -789,21 +1000,18 @@
       }
 
       function renderCalendar() {
-        // Rimuovi celle precedenti (mantieni le intestazioni)
         const toRemove = grid.querySelectorAll('.day');
         toRemove.forEach(el => el.remove());
 
         monthLabel.textContent = MONTHS_IT[viewMonth] + ' ' + viewYear;
 
         const firstDay = new Date(viewYear, viewMonth, 1);
-        // Lunedì = 0
         let startDow = firstDay.getDay() - 1;
         if (startDow < 0) startDow = 6;
 
         const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
         const daysInPrev  = new Date(viewYear, viewMonth, 0).getDate();
 
-        // Giorni mese precedente
         for (let i = startDow - 1; i >= 0; i--) {
           const d = document.createElement('div');
           d.className = 'day other-month';
@@ -811,7 +1019,6 @@
           grid.appendChild(d);
         }
 
-        // Giorni del mese corrente
         for (let d = 1; d <= daysInMonth; d++) {
           const dt = new Date(viewYear, viewMonth, d, 12);
           const el = document.createElement('div');
@@ -821,7 +1028,6 @@
           if (isSameDay(dt, today))    el.classList.add('today');
           if (isSameDay(dt, selected)) el.classList.add('selected');
 
-          // Non permettere selezione di date future
           if (dt > today) {
             el.classList.add('other-month');
           } else {
@@ -836,7 +1042,6 @@
           grid.appendChild(el);
         }
 
-        // Riempi fino a completare la griglia (multiplo di 7)
         const total = startDow + daysInMonth;
         const remaining = total % 7 === 0 ? 0 : 7 - (total % 7);
         for (let i = 1; i <= remaining; i++) {
@@ -922,6 +1127,90 @@
       startRefresh();
     })();
 
+    // ── Tab Telefono: carrello interattivo ──────────────────
+    (function () {
+      if (!document.getElementById('tel-form')) return;
+
+      // Mappa: product_id -> { name, price, qty }
+      const cart = {};
+
+      window.changeQty = function(pid, delta) {
+        const input = document.getElementById('qty-' + pid);
+        if (!input) return;
+        let v = parseInt(input.value) || 0;
+        v = Math.max(0, Math.min(20, v + delta));
+        input.value = v;
+        syncCart();
+      };
+
+      window.syncCart = function() {
+        // Aggiorna oggetto cart da tutti gli input
+        document.querySelectorAll('.qty-input').forEach(input => {
+          const pid   = parseInt(input.dataset.pid);
+          const qty   = parseInt(input.value) || 0;
+          const price = parseFloat(input.dataset.price);
+          const name  = input.dataset.name;
+          const row   = document.getElementById('row-' + pid);
+          if (qty > 0) {
+            cart[pid] = { name, price, qty };
+            if (row) row.classList.add('in-cart');
+          } else {
+            delete cart[pid];
+            if (row) row.classList.remove('in-cart');
+          }
+        });
+        renderCart();
+      };
+
+      function renderCart() {
+        const linesEl = document.getElementById('cart-lines');
+        const totalEl = document.getElementById('cart-total');
+        const submitBtn = document.getElementById('submit-btn');
+
+        const keys = Object.keys(cart);
+        if (keys.length === 0) {
+          linesEl.innerHTML = '<span class="cart-empty">Nessun prodotto aggiunto</span>';
+          totalEl.textContent = '€0.00';
+          if (submitBtn) submitBtn.disabled = true;
+          return;
+        }
+
+        let html = '';
+        let total = 0;
+        keys.forEach(pid => {
+          const { name, price, qty } = cart[pid];
+          const line = price * qty;
+          total += line;
+          html += `<div class="cart-line">
+            <span class="cart-line-name">${name} ×${qty}</span>
+            <span class="cart-line-price">€${line.toFixed(2)}</span>
+          </div>`;
+        });
+        linesEl.innerHTML = html;
+        totalEl.textContent = '€' + total.toFixed(2);
+        if (submitBtn) submitBtn.disabled = false;
+      }
+
+      window.toggleAddress = function() {
+        const sel = document.getElementById('fulfillment-type');
+        const grp = document.getElementById('address-group');
+        const inp = document.getElementById('address-input');
+        if (!sel || !grp) return;
+        const isDelivery = sel.value === 'delivery';
+        grp.style.display = isDelivery ? '' : 'none';
+        if (inp) inp.required = isDelivery;
+      };
+
+      window.resetForm = function() {
+        document.querySelectorAll('.qty-input').forEach(i => { i.value = 0; });
+        document.querySelectorAll('.tel-product-row').forEach(r => r.classList.remove('in-cart'));
+        Object.keys(cart).forEach(k => delete cart[k]);
+        renderCart();
+      };
+
+      // Init
+      toggleAddress();
+    })();
   </script>
 
 </body>
