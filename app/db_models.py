@@ -1,5 +1,5 @@
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field, Relationship
 
 
@@ -31,10 +31,10 @@ class Order(SQLModel, table=True):
     phone: str
     address: Optional[str] = None
     fulfillment_type: str
-    slot_label: str
-    status: str = Field(default="pending")
+    slot_label: str = Field(index=True)
+    status: str = Field(default="pending", index=True)
     total_price: float = Field(default=0.0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     items: List["OrderItem"] = Relationship(back_populates="order")
 

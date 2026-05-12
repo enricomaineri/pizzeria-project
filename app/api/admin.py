@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from urllib.parse import quote
 from slugify import slugify
 
@@ -44,8 +44,8 @@ def admin_dashboard(
     error: str | None = None,
     _admin: str = Depends(require_admin),
 ):
-    now = datetime.now()
-    start_of_day      = datetime(now.year, now.month, now.day)
+    now = datetime.now(timezone.utc)
+    start_of_day      = now.replace(hour=0, minute=0, second=0, microsecond=0)
     start_of_next_day = start_of_day + timedelta(days=1)
 
     with Session(engine) as session:
@@ -127,7 +127,7 @@ def admin_storico(
     else:
         selected_date = date.today() - timedelta(days=1)
 
-    start = datetime(selected_date.year, selected_date.month, selected_date.day)
+    start = datetime(selected_date.year, selected_date.month, selected_date.day, tzinfo=timezone.utc)
     end   = start + timedelta(days=1)
 
     with Session(engine) as session:

@@ -1,11 +1,13 @@
 from collections import Counter
+from datetime import timezone
 from typing import List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from sqlmodel import Session, select
 
 from app.db import engine
 from app.db_models import Order, OrderItem, Product
+from app.limiter import limiter
 from app.schemas.order import (
     OrderCreate,
     OrderCreateResponse,
@@ -58,7 +60,8 @@ def get_alternative_slots(session: Session, fulfillment_type: str, exclude_slot:
 
 
 @router.get("/slots")
-def get_slots(fulfillment_type: str):
+@limiter.limit("30/minute")
+def get_slots(request: Request, fulfillment_type: str):
     if fulfillment_type not in ("delivery", "pickup"):
         raise HTTPException(status_code=400, detail="fulfillment_type non valido: usa 'delivery' o 'pickup'")
 
@@ -73,7 +76,8 @@ def get_slots(fulfillment_type: str):
 
 
 @router.post("/orders/check-slot", response_model=SlotCheckResponse)
-def check_slot(payload: SlotCheckRequest):
+@limiter.limit("20/minute")
+def check_slot(request: Request, payload: SlotCheckRequest):
     valid_slots = get_slots_by_type(payload.fulfillment_type)
     if payload.slot_label not in valid_slots:
         raise HTTPException(
@@ -95,7 +99,8 @@ def check_slot(payload: SlotCheckRequest):
 
 
 @router.post("/orders", response_model=OrderCreateResponse)
-def create_order(payload: OrderCreate):
+@limiter.limit("10/minute")
+def create_order(request: Request, payload: OrderCreate):
     if payload.fulfillment_type == "delivery" and not (payload.address or "").strip():
         raise HTTPException(status_code=400, detail="Indirizzo obbligatorio per la consegna a domicilio")
 
@@ -107,13 +112,11 @@ def create_order(payload: OrderCreate):
         )
 
     # Deduplicazione: somma quantità se stesso product_id appare più volte.
-    # Il controllo MAX_QUANTITY_PER_PRODUCT viene fatto DOPO la merge,
-    # così 15 + 10 = 25 viene correttamente bloccato.
     merged: dict[int, int] = {}
     for item in payload.items:
         merged[item.product_id] = merged.get(item.product_id, 0) + item.quantity
 
-    # Controllo quantità post-merge (prima di toccare il DB)
+    # Controllo quantità post-merge
     for product_id, quantity in merged.items():
         if quantity > MAX_QUANTITY_PER_PRODUCT:
             raise HTTPException(
