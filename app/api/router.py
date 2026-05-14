@@ -2,11 +2,9 @@ from fastapi import APIRouter
 from app.api.public import router as public_router
 from app.api.menu import router as menu_router
 from app.api.contact import router as contact_router
-from app.api.menu_data import router as menu_data_router
 
 router = APIRouter()
 
 router.include_router(public_router)
 router.include_router(menu_router)
 router.include_router(contact_router)
-router.include_router(menu_data_router)
