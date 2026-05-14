@@ -18,9 +18,9 @@ def _require(key: str) -> str:
     return val
 
 
-ADMIN_USERNAME = _require("ADMIN_USERNAME")
-ADMIN_PASSWORD = _require("ADMIN_PASSWORD")
-SECRET_KEY     = _require("SECRET_KEY")
+ADMIN_USERNAME      = _require("ADMIN_USERNAME")
+ADMIN_PASSWORD_HASH = _require("ADMIN_PASSWORD_HASH")
+SECRET_KEY          = _require("SECRET_KEY")
 
 # "production" abilita cookie secure (HTTPS obbligatorio) e altri hardening.
 # In sviluppo locale usa il default "development" oppure ometti la variabile.

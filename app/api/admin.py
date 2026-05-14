@@ -16,6 +16,25 @@ router = APIRouter(tags=["admin"])
 
 
 # ─────────────────────────────────────────────
+# HELPER: carica items di più ordini in 1 query
+# ─────────────────────────────────────────────
+
+def attach_items(session: Session, orders: list[Order]) -> list[dict]:
+    """Dato un elenco di ordini, restituisce [{"order": ..., "items": [...]}]
+    usando una singola query IN invece di una query per ogni ordine (N+1)."""
+    if not orders:
+        return []
+    order_ids = [o.id for o in orders]
+    all_items = session.exec(
+        select(OrderItem).where(OrderItem.order_id.in_(order_ids))
+    ).all()
+    items_by_order: dict[int, list[OrderItem]] = {o.id: [] for o in orders}
+    for item in all_items:
+        items_by_order[item.order_id].append(item)
+    return [{"order": o, "items": items_by_order[o.id]} for o in orders]
+
+
+# ─────────────────────────────────────────────
 # HELPER MESSAGGI
 # ─────────────────────────────────────────────
 
@@ -66,12 +85,7 @@ def admin_dashboard(
         else:
             filtered = sorted(today_orders, key=lambda o: o.created_at, reverse=True)
 
-        orders_with_items = []
-        for order in filtered:
-            items = session.exec(
-                select(OrderItem).where(OrderItem.order_id == order.id)
-            ).all()
-            orders_with_items.append({"order": order, "items": items})
+        orders_with_items = attach_items(session, filtered)
 
     return templates.TemplateResponse(request, "admin.html", {
         "active_tab":        "orders",
@@ -143,14 +157,7 @@ def admin_storico(
             ).order_by(Order.created_at.desc())
 
         orders = session.exec(statement).all()
-
-        orders_with_items = []
-        for order in orders:
-            items = session.exec(
-                select(OrderItem).where(OrderItem.order_id == order.id)
-            ).all()
-            orders_with_items.append({"order": order, "items": items})
-
+        orders_with_items = attach_items(session, list(orders))
         total_day = sum(o.total_price for o in orders)
 
     return templates.TemplateResponse(request, "admin.html", {

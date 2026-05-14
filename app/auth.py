@@ -1,6 +1,8 @@
+import bcrypt
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from fastapi import Request, HTTPException
-from app.config import SECRET_KEY, ADMIN_USERNAME, ADMIN_PASSWORD
+
+from app.config import SECRET_KEY, ADMIN_USERNAME, ADMIN_PASSWORD_HASH
 
 SESSION_COOKIE = "admin_session"
 SESSION_MAX_AGE = 60 * 60 * 8  # 8 ore
@@ -21,7 +23,9 @@ def verify_session_token(token: str) -> str | None:
 
 
 def check_admin_credentials(username: str, password: str) -> bool:
-    return username == ADMIN_USERNAME and password == ADMIN_PASSWORD
+    if username != ADMIN_USERNAME:
+        return False
+    return bcrypt.checkpw(password.encode(), ADMIN_PASSWORD_HASH.encode())
 
 
 def get_current_admin(request: Request) -> str | None:

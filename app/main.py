@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -17,7 +18,15 @@ from app.seed import seed_data
 
 logger = logging.getLogger("pizzeria")
 
-app = FastAPI(title="Pizzeria Project")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_db_and_tables()
+    seed_data()
+    yield
+
+
+app = FastAPI(title="Pizzeria Project", lifespan=lifespan)
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
 app.add_middleware(
@@ -80,7 +89,3 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     return RedirectResponse(url="/admin", status_code=302)
 
 
-@app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
-    seed_data()

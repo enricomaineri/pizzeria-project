@@ -2,6 +2,7 @@
 # Per installare: pip install -r requirements.txt
 # Per un ambiente riproducibile esatto usa requirements-lock.txt
 
+bcrypt>=5.0.0
 fastapi>=0.136.1
 sqlmodel>=0.0.38
 uvicorn[standard]>=0.46.0

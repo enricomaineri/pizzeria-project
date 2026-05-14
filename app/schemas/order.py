@@ -6,6 +6,7 @@ from typing import List
 from pydantic import BaseModel, Field, field_validator
 
 from app.config import MAX_QUANTITY_PER_PRODUCT
+from app.db_models import FulfillmentType
 
 
 # ---------------------------------------------------------------------------
@@ -18,12 +19,12 @@ class OrderItemCreate(BaseModel):
 
 
 class OrderCreate(BaseModel):
-    customer_name: str = Field(..., min_length=2, max_length=100)
-    phone: str
-    address: str | None = Field(default=None, max_length=200)
-    fulfillment_type: str  # "delivery" | "pickup"
-    slot_label: str
-    items: List[OrderItemCreate] = Field(..., min_length=1)
+    customer_name:    str             = Field(..., min_length=2, max_length=100)
+    phone:            str
+    address:          str | None      = Field(default=None, max_length=200)
+    fulfillment_type: FulfillmentType
+    slot_label:       str
+    items:            List[OrderItemCreate] = Field(..., min_length=1)
 
     @field_validator("phone")
     @classmethod
@@ -40,17 +41,10 @@ class OrderCreate(BaseModel):
             raise ValueError("Nome non valido: caratteri non permessi")
         return v.strip()
 
-    @field_validator("fulfillment_type")
-    @classmethod
-    def validate_fulfillment(cls, v: str) -> str:
-        if v not in ("delivery", "pickup"):
-            raise ValueError("fulfillment_type deve essere 'delivery' o 'pickup'")
-        return v
-
 
 class SlotCheckRequest(BaseModel):
-    fulfillment_type: str
-    slot_label: str
+    fulfillment_type: FulfillmentType
+    slot_label:       str
 
 
 # ---------------------------------------------------------------------------
