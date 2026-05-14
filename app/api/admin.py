@@ -1,19 +1,18 @@
 from datetime import datetime, timedelta, date, timezone
-from urllib.parse import quote
-from slugify import slugify
-
-from fastapi import APIRouter, Request, Form, Query, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
-from sqlmodel import Session, select
 from typing import Optional
+from urllib.parse import quote
 
-from app.db import engine
-from app.db_models import Order, OrderItem, Product, Category
+from fastapi import APIRouter, Depends, Form, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from slugify import slugify
+from sqlmodel import Session, select
+
 from app.auth import require_admin
+from app.db import engine
+from app.db_models import Category, Order, OrderItem, Product
+from app.templates_config import templates
 
 router = APIRouter(tags=["admin"])
-templates = Jinja2Templates(directory="app/templates")
 
 
 # ─────────────────────────────────────────────

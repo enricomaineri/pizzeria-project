@@ -1,10 +1,9 @@
-from collections import Counter
-from datetime import timezone
 from typing import List
 
 from fastapi import APIRouter, HTTPException, Request
 from sqlmodel import Session, select
 
+from app.config import MAX_QUANTITY_PER_PRODUCT
 from app.db import engine
 from app.db_models import Order, OrderItem, Product
 from app.limiter import limiter
@@ -24,8 +23,6 @@ MAX_ORDERS_PER_SLOT = {
     "delivery": 3,
     "pickup": 5,
 }
-
-MAX_QUANTITY_PER_PRODUCT = 20
 
 
 def get_slots_by_type(fulfillment_type: str) -> List[str]:

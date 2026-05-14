@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import List
-from pydantic import BaseModel, Field, field_validator
 import re
+from typing import List
 
-MAX_QUANTITY_PER_PRODUCT = 20
+from pydantic import BaseModel, Field, field_validator
+
+from app.config import MAX_QUANTITY_PER_PRODUCT
 
 
 # ---------------------------------------------------------------------------

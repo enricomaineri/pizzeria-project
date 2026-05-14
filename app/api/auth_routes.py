@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 
 from app.auth import (
     check_admin_credentials,
@@ -10,10 +9,10 @@ from app.auth import (
     get_current_admin,
 )
 from app.config import IS_PRODUCTION
-from app.limiter import limiter  # ← importa dal modulo dedicato, non da main
+from app.limiter import limiter
+from app.templates_config import templates
 
 router = APIRouter(tags=["auth"])
-templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/admin/login", response_class=HTMLResponse)

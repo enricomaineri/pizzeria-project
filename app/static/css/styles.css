@@ -1462,3 +1462,8 @@ input {
     min-height: 320px;
   }
 }
+.chatbot-message.chatbot-error {
+  color: #c0392b;
+  background-color: #fdecea;
+  border-left: 3px solid #e74c3c;
+}
