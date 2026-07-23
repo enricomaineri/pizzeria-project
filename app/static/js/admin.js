@@ -232,5 +232,40 @@
     renderCart();
   };
 
+  // ── Orario personalizzato ("Altro orario…") ───────────────
+  const SLOT_PATTERN = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+
+  window.handleSlotChange = function () {
+    const select = document.getElementById('slot-select');
+    const input  = document.getElementById('custom-slot-input');
+    if (!select || !input) return;
+    const isCustom = select.value === '__custom__';
+    input.style.display = isCustom ? 'block' : 'none';
+    if (isCustom) input.focus();
+  };
+
+  const telForm = document.getElementById('tel-form');
+  if (telForm) {
+    telForm.addEventListener('submit', (event) => {
+      const select = document.getElementById('slot-select');
+      const input  = document.getElementById('custom-slot-input');
+      if (!select || select.value !== '__custom__') return;
+
+      const value = input.value.trim();
+      if (!SLOT_PATTERN.test(value)) {
+        event.preventDefault();
+        alert('Inserisci un orario valido nel formato HH:MM (es: 21:45).');
+        input.focus();
+        return;
+      }
+      // Il <select> non accetta un value senza un <option> corrispondente:
+      // ne aggiungiamo uno al volo con l'orario scelto, cosi' viene inviato.
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+
   toggleAddress();
 })();

@@ -22,7 +22,12 @@ document.addEventListener("DOMContentLoaded", () => {
     slotLabel: "",
     customerName: "",
     phone: "",
+    email: "",
   };
+
+  // Deve restare allineato a MAX_QUANTITY_PER_PRODUCT in app/config.py: qui serve
+  // solo per avvisare subito il cliente, il controllo che conta è lato server.
+  const MAX_QUANTITY_PER_PRODUCT = 20;
 
   // ── Validatori ───────────────────────────────────────────────────────────────
 
@@ -66,6 +71,18 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
+   * Valida email: formato base nome@dominio.tld.
+   */
+  function validateEmail(value) {
+    const trimmed = value.trim();
+    if (trimmed.length < 5) return "L'email è troppo corta.";
+    if (trimmed.length > 254) return "L'email è troppo lunga.";
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed))
+      return "Inserisci un indirizzo email valido (es: nome@dominio.it).";
+    return null;
+  }
+
+  /**
    * Valida indirizzo di consegna:
    * - lunghezza minima 8 caratteri
    * - deve contenere almeno una parola + un numero civico
@@ -90,7 +107,13 @@ document.addEventListener("DOMContentLoaded", () => {
   function addMessage(text, type = "bot") {
     const message = document.createElement("div");
     message.className = `chatbot-message ${type}`;
-    message.innerHTML = text;
+    // I messaggi "user" sono testo scritto dal cliente: mai interpretarlo come
+    // HTML. I messaggi "bot" sono markup scritto da noi (es. riepilogo carrello).
+    if (type === "user") {
+      message.textContent = text;
+    } else {
+      message.innerHTML = text;
+    }
     chatbotMessages.appendChild(message);
     chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
   }
@@ -225,8 +248,17 @@ document.addEventListener("DOMContentLoaded", () => {
       return resetChatbot();
     }
     const existing = state.cart.find((item) => item.product_id === product.id);
+    const newTotalQuantity = (existing ? existing.quantity : 0) + quantity;
+    if (newTotalQuantity > MAX_QUANTITY_PER_PRODUCT) {
+      addErrorMessage(
+        `Puoi ordinare al massimo ${MAX_QUANTITY_PER_PRODUCT} unità di ${product.name} (ne hai già ${existing ? existing.quantity : 0} nel carrello). Per quantità maggiori chiamaci direttamente.`
+      );
+      state.selectedProduct = null;
+      askAddMore();
+      return;
+    }
     if (existing) {
-      existing.quantity += quantity;
+      existing.quantity = newTotalQuantity;
     } else {
       state.cart.push({
         product_id: product.id,
@@ -252,9 +284,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function askWhichCategoryAgain() {
     addMessage("Sì, aggiungi ancora", "user");
-    addMessage("Perfetto. Scegli una categoria per continuare.");
     state.step = "choose_category";
     const categories = getAvailableCategories();
+    if (!categories.length) {
+      addMessage("Non ci sono altre categorie con prodotti disponibili.");
+      askAddMore();
+      return;
+    }
+    addMessage("Perfetto. Scegli una categoria per continuare.");
     setQuickActions(
       categories.map((category) => ({
         label: category.name,
@@ -296,7 +333,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       const availableSlots = (data.slots || []).filter((slot) => slot.available);
-      chatbotStatus.textContent = "Menu collegato";
+      chatbotStatus.textContent = "Online";
       if (!availableSlots.length) {
         addMessage("Al momento non ci sono slot disponibili. Riprova più tardi.");
         setQuickActions([{ label: "Nuovo ordine", onClick: resetChatbot }]);
@@ -313,7 +350,11 @@ document.addEventListener("DOMContentLoaded", () => {
       );
     } catch (error) {
       chatbotStatus.textContent = "Errore slot";
-      addMessage("Non riesco a leggere gli slot disponibili dal backend.");
+      addMessage("Non riesco a leggere gli orari disponibili in questo momento.");
+      setQuickActions([
+        { label: "Riprova", onClick: loadSlots },
+        { label: "Nuovo ordine", onClick: resetChatbot },
+      ]);
       console.error("Errore slot:", error);
     }
   }
@@ -331,6 +372,10 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({
           fulfillment_type: state.fulfillmentType,
           slot_label: slotLabel,
+          items: state.cart.map((item) => ({
+            product_id: item.product_id,
+            quantity: item.quantity,
+          })),
         }),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -356,6 +401,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (error) {
       addMessage("Errore durante il controllo dello slot.");
+      setQuickActions([
+        { label: "Riprova", onClick: () => chooseSlot(slotLabel) },
+        { label: "Nuovo ordine", onClick: resetChatbot },
+      ]);
       console.error("Errore check slot:", error);
     }
   }
@@ -398,14 +447,23 @@ document.addEventListener("DOMContentLoaded", () => {
     state.step = "enter_phone";
   }
 
+  function askEmail() {
+    addMessage(
+      "Ultima cosa: a quale email vuoi ricevere la ricevuta dell'ordine?"
+    );
+    resetInput("Es: mario.rossi@email.it");
+    state.step = "enter_email";
+  }
+
   async function submitOrder() {
     state.step = "submitting";
-    addMessage("Sto salvando il tuo ordine nel database...");
+    addMessage("Sto registrando il tuo ordine...");
     clearQuickActions();
     try {
       const payload = {
         customer_name: state.customerName,
         phone: state.phone,
+        customer_email: state.email,
         address: state.fulfillmentType === "delivery" ? state.address : null,
         fulfillment_type: state.fulfillmentType,
         slot_label: state.slotLabel,
@@ -425,8 +483,11 @@ document.addEventListener("DOMContentLoaded", () => {
           ? errData.detail.join(" | ")
           : errData.detail || `Errore HTTP ${response.status}`;
         addErrorMessage(detail);
-        setQuickActions([{ label: "Riprova", onClick: submitOrder }]);
-        state.step = "enter_phone";
+        setQuickActions([
+          { label: "Riprova", onClick: submitOrder },
+          { label: "Nuovo ordine", onClick: resetChatbot },
+        ]);
+        state.step = "submit_failed";
         return;
       }
       const data = await response.json();
@@ -448,7 +509,11 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       addErrorMessage("Non sono riuscito a salvare l'ordine. Controlla la connessione e riprova.");
       console.error("Errore salvataggio ordine:", error);
-      setQuickActions([{ label: "Riprova", onClick: submitOrder }]);
+      setQuickActions([
+        { label: "Riprova", onClick: submitOrder },
+        { label: "Nuovo ordine", onClick: resetChatbot },
+      ]);
+      state.step = "submit_failed";
     }
   }
 
@@ -462,6 +527,7 @@ document.addEventListener("DOMContentLoaded", () => {
     state.slotLabel = "";
     state.customerName = "";
     state.phone = "";
+    state.email = "";
   }
 
   function resetChatbot() {
@@ -480,20 +546,21 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!fromReset) {
         addMessage("Ciao, sono l'Assistente Vesuvio.");
       }
-      addMessage("Sto caricando il menu reale dal database...");
+      addMessage("Sto aprendo il menu...");
       const response = await fetch("/api/menu");
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       state.categories = Array.isArray(data.categories) ? data.categories : [];
       state.products = state.categories.flatMap((category) => getCategoryProducts(category));
-      chatbotStatus.textContent = "Menu collegato";
+      chatbotStatus.textContent = "Online";
       addMessage("Perfetto, il menu è pronto.");
       addMessage("Premi qui sotto per iniziare l'ordine.");
       state.step = "ready";
       setQuickActions([{ label: "🍕 Ordina ora", onClick: startOrderFlow }]);
     } catch (error) {
-      chatbotStatus.textContent = "Errore API";
-      addMessage("Non riesco a leggere il menu dal backend.");
+      chatbotStatus.textContent = "Non disponibile";
+      addMessage("Non riesco a caricare il menu in questo momento. Riprova tra poco.");
+      setQuickActions([{ label: "Riprova", onClick: () => initChatbot(true) }]);
       console.error("Errore chatbot init:", error);
     }
   }
@@ -544,6 +611,21 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       state.phone = normalizePhone(value); // salva sempre normalizzato
       addMessage(value, "user");           // mostra quello che ha scritto
+      chatbotInput.value = "";
+      askEmail();
+      return;
+    }
+
+    // ── Email ──────────────────────────────────────────────────────────────────
+    if (state.step === "enter_email") {
+      const err = validateEmail(value);
+      if (err) {
+        addErrorMessage(err);
+        chatbotInput.focus();
+        return;
+      }
+      state.email = value.trim();
+      addMessage(value, "user");
       chatbotInput.value = "";
       submitOrder();
       return;

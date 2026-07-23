@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta, date, timezone
 from typing import Optional
 from urllib.parse import quote
@@ -7,9 +8,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from slugify import slugify
 from sqlmodel import Session, select
 
+from app.api.orders import slot_is_available
 from app.auth import require_admin
-from app.db import engine
-from app.db_models import Category, Order, OrderItem, Product
+from app.config import MAX_QUANTITY_PER_PRODUCT
+from app.db import get_session
+from app.db_models import Category, FulfillmentType, Order, OrderItem, OrderStatus, Product
 from app.templates_config import templates
 
 router = APIRouter(tags=["admin"])
@@ -60,32 +63,32 @@ def admin_dashboard(
     status: str | None = None,
     success: str | None = None,
     error: str | None = None,
+    session: Session = Depends(get_session),
     _admin: str = Depends(require_admin),
 ):
     now = datetime.now(timezone.utc)
     start_of_day      = now.replace(hour=0, minute=0, second=0, microsecond=0)
     start_of_next_day = start_of_day + timedelta(days=1)
 
-    with Session(engine) as session:
-        today_orders = session.exec(
-            select(Order).where(
-                Order.created_at >= start_of_day,
-                Order.created_at < start_of_next_day
-            )
-        ).all()
+    today_orders = session.exec(
+        select(Order).where(
+            Order.created_at >= start_of_day,
+            Order.created_at < start_of_next_day
+        )
+    ).all()
 
-        pending_count   = len([o for o in today_orders if o.status == "pending"])
-        confirmed_count = len([o for o in today_orders if o.status == "confirmed"])
-        preparing_count = len([o for o in today_orders if o.status == "preparing"])
-        ready_count     = len([o for o in today_orders if o.status == "ready"])
-        delivered_count = len([o for o in today_orders if o.status == "delivered"])
+    pending_count   = len([o for o in today_orders if o.status == "pending"])
+    confirmed_count = len([o for o in today_orders if o.status == "confirmed"])
+    preparing_count = len([o for o in today_orders if o.status == "preparing"])
+    ready_count     = len([o for o in today_orders if o.status == "ready"])
+    delivered_count = len([o for o in today_orders if o.status == "delivered"])
 
-        if status:
-            filtered = [o for o in today_orders if o.status == status]
-        else:
-            filtered = sorted(today_orders, key=lambda o: o.created_at, reverse=True)
+    if status:
+        filtered = [o for o in today_orders if o.status == status]
+    else:
+        filtered = sorted(today_orders, key=lambda o: o.created_at, reverse=True)
 
-        orders_with_items = attach_items(session, filtered)
+    orders_with_items = attach_items(session, filtered)
 
     return templates.TemplateResponse(request, "admin.html", {
         "active_tab":        "orders",
@@ -106,15 +109,20 @@ def admin_dashboard(
 def update_order_status(
     order_id: int,
     status: str = Form(...),
+    session: Session = Depends(get_session),
     _admin: str = Depends(require_admin),
 ):
-    with Session(engine) as session:
-        order = session.get(Order, order_id)
-        if not order:
-            return redirect_with_message("/admin", error="Ordine non trovato.")
-        order.status = status
-        session.add(order)
-        session.commit()
+    try:
+        new_status = OrderStatus(status)
+    except ValueError:
+        return redirect_with_message("/admin", error="Stato ordine non valido.")
+
+    order = session.get(Order, order_id)
+    if not order:
+        return redirect_with_message("/admin", error="Ordine non trovato.")
+    order.status = new_status
+    session.add(order)
+    session.commit()
     return redirect_with_message("/admin", success="Stato ordine aggiornato.")
 
 
@@ -129,6 +137,7 @@ def admin_storico(
     status: str | None = None,
     success: str | None = None,
     error: str | None = None,
+    session: Session = Depends(get_session),
     _admin: str = Depends(require_admin),
 ):
     if data:
@@ -143,22 +152,21 @@ def admin_storico(
     start = datetime(selected_date.year, selected_date.month, selected_date.day, tzinfo=timezone.utc)
     end   = start + timedelta(days=1)
 
-    with Session(engine) as session:
+    statement = select(Order).where(
+        Order.created_at >= start,
+        Order.created_at < end
+    ).order_by(Order.created_at.desc())
+
+    if status:
         statement = select(Order).where(
             Order.created_at >= start,
-            Order.created_at < end
+            Order.created_at < end,
+            Order.status == status
         ).order_by(Order.created_at.desc())
 
-        if status:
-            statement = select(Order).where(
-                Order.created_at >= start,
-                Order.created_at < end,
-                Order.status == status
-            ).order_by(Order.created_at.desc())
-
-        orders = session.exec(statement).all()
-        orders_with_items = attach_items(session, list(orders))
-        total_day = sum(o.total_price for o in orders)
+    orders = session.exec(statement).all()
+    orders_with_items = attach_items(session, list(orders))
+    total_day = sum(o.total_price for o in orders)
 
     return templates.TemplateResponse(request, "admin.html", {
         "active_tab":          "storico",
@@ -182,25 +190,25 @@ def admin_telefono(
     request: Request,
     success: str | None = None,
     error: str | None = None,
+    session: Session = Depends(get_session),
     _admin: str = Depends(require_admin),
 ):
-    with Session(engine) as session:
-        categories = session.exec(select(Category).order_by(Category.sort_order)).all()
-        products   = session.exec(
-            select(Product)
-            .where(Product.is_available == True)
-            .order_by(Product.category_id, Product.sort_order)
-        ).all()
-        # Slot suggeriti: da adesso a 3 ore, ogni 15 minuti
-        now = datetime.now(timezone.utc)
-        slots = []
-        start = now.replace(minute=(now.minute // 15 + 1) * 15 % 60,
-                            second=0, microsecond=0)
-        if (now.minute // 15 + 1) * 15 >= 60:
-            start = start + timedelta(hours=1)
-        for i in range(12):  # 12 slot = 3 ore
-            t = start + timedelta(minutes=15 * i)
-            slots.append(t.strftime("%H:%M"))
+    categories = session.exec(select(Category).order_by(Category.sort_order)).all()
+    products   = session.exec(
+        select(Product)
+        .where(Product.is_available == True)
+        .order_by(Product.category_id, Product.sort_order)
+    ).all()
+    # Slot suggeriti: da adesso a 3 ore, ogni 15 minuti
+    now = datetime.now(timezone.utc)
+    slots = []
+    start = now.replace(minute=(now.minute // 15 + 1) * 15 % 60,
+                        second=0, microsecond=0)
+    if (now.minute // 15 + 1) * 15 >= 60:
+        start = start + timedelta(hours=1)
+    for i in range(12):  # 12 slot = 3 ore
+        t = start + timedelta(minutes=15 * i)
+        slots.append(t.strftime("%H:%M"))
 
     return templates.TemplateResponse(request, "admin.html", {
         "active_tab":      "telefono",
@@ -223,53 +231,91 @@ def admin_telefono_post(
     # items: lista di product_id e quantity codificati come campi ripetuti
     product_ids:      list[int]   = Form(default=[]),
     quantities:       list[int]   = Form(default=[]),
+    session: Session = Depends(get_session),
     _admin: str = Depends(require_admin),
 ):
-    # Filtro righe con quantità > 0
-    items_raw = [(pid, qty) for pid, qty in zip(product_ids, quantities) if qty > 0]
+    try:
+        ft = FulfillmentType(fulfillment_type)
+    except ValueError:
+        return redirect_with_message("/admin/telefono", error="Modalità di consegna non valida.")
 
-    if not items_raw:
+    try:
+        order_status = OrderStatus(status)
+    except ValueError:
+        return redirect_with_message("/admin/telefono", error="Stato ordine non valido.")
+
+    # Il form permette anche un orario libero ("Altro orario…"): valida comunque
+    # il formato HH:MM, non fidandosi della sola validazione JS lato client.
+    if not re.match(r"^([01]\d|2[0-3]):[0-5]\d$", slot_label):
+        return redirect_with_message("/admin/telefono", error="Orario non valido (formato atteso HH:MM).")
+
+    # Deduplica e somma quantità per lo stesso prodotto (come per gli ordini online)
+    merged: dict[int, int] = {}
+    for product_id, quantity in zip(product_ids, quantities):
+        if quantity > 0:
+            merged[product_id] = merged.get(product_id, 0) + quantity
+
+    if not merged:
         return redirect_with_message("/admin/telefono", error="Aggiungi almeno un prodotto all'ordine.")
 
-    with Session(engine) as session:
-        order_items = []
-        total = 0.0
+    for product_id, quantity in merged.items():
+        if quantity > MAX_QUANTITY_PER_PRODUCT:
+            return redirect_with_message(
+                "/admin/telefono",
+                error=f"Quantità massima per prodotto: {MAX_QUANTITY_PER_PRODUCT}."
+            )
 
-        for product_id, quantity in items_raw:
-            product = session.get(Product, product_id)
-            if not product:
-                continue
-            line_total = round(product.price * quantity, 2)
-            total += line_total
-            order_items.append(OrderItem(
-                product_id   = product.id,
-                product_name = product.name,
-                quantity     = quantity,
-                unit_price   = product.price,
-                line_total   = line_total,
-            ))
+    order_items = []
+    total = 0.0
+    order_weight = 0.0
 
-        if not order_items:
-            return redirect_with_message("/admin/telefono", error="Nessun prodotto valido selezionato.")
+    for product_id, quantity in merged.items():
+        product = session.get(Product, product_id)
+        if not product:
+            return redirect_with_message("/admin/telefono", error=f"Prodotto con id {product_id} non trovato.")
+        if not product.is_available:
+            return redirect_with_message(
+                "/admin/telefono",
+                error=f"'{product.name}' non è al momento disponibile."
+            )
 
-        order = Order(
-            customer_name    = customer_name.strip(),
-            phone            = phone.strip(),
-            address          = address.strip() or None,
-            fulfillment_type = fulfillment_type,
-            slot_label       = slot_label,
-            status           = status,
-            total_price      = round(total, 2),
+        line_total = round(product.price * quantity, 2)
+        total += line_total
+        order_weight += product.prep_weight * quantity
+        order_items.append(OrderItem(
+            product_id   = product.id,
+            product_name = product.name,
+            quantity     = quantity,
+            unit_price   = product.price,
+            line_total   = line_total,
+            prep_weight  = product.prep_weight,
+        ))
+
+    if not slot_is_available(session, ft, slot_label, order_weight):
+        return redirect_with_message(
+            "/admin/telefono",
+            error="Lo slot selezionato non ha più capacità sufficiente."
         )
-        session.add(order)
-        session.flush()  # ottieni order.id
 
-        for item in order_items:
-            item.order_id = order.id
-            session.add(item)
+    order = Order(
+        customer_name    = customer_name.strip(),
+        phone            = phone.strip(),
+        customer_email   = "",  # ordine telefonico: nessuna email raccolta, nessuna ricevuta inviata
+        address          = address.strip() or None,
+        fulfillment_type = ft,
+        slot_label       = slot_label,
+        status           = order_status,
+        total_price      = round(total, 2),
+    )
+    session.add(order)
+    session.flush()  # ottieni order.id
 
-        session.commit()
-        order_id = order.id
+    for item in order_items:
+        item.order_id = order.id
+        session.add(item)
+
+    session.commit()
+    order_id = order.id
 
     return redirect_with_message(
         "/admin",
@@ -286,11 +332,11 @@ def admin_menu(
     request: Request,
     success: str | None = None,
     error: str | None = None,
+    session: Session = Depends(get_session),
     _admin: str = Depends(require_admin),
 ):
-    with Session(engine) as session:
-        categories = session.exec(select(Category).order_by(Category.sort_order)).all()
-        products   = session.exec(select(Product).order_by(Product.category_id, Product.sort_order)).all()
+    categories = session.exec(select(Category).order_by(Category.sort_order)).all()
+    products   = session.exec(select(Product).order_by(Product.category_id, Product.sort_order)).all()
 
     return templates.TemplateResponse(request, "admin.html", {
         "active_tab":      "menu",
@@ -305,7 +351,7 @@ def admin_menu(
 def add_product(
     name:          str   = Form(...),
     description:   str   = Form(...),
-    price:         float = Form(...),
+    price:         float = Form(..., ge=0),
     category_id:   int   = Form(...),
     image_url:     str   = Form(""),
     is_available:  Optional[str] = Form(None),
@@ -313,24 +359,24 @@ def add_product(
     is_vegetarian: Optional[str] = Form(None),
     is_spicy:      Optional[str] = Form(None),
     sort_order:    int   = Form(0),
+    session: Session = Depends(get_session),
     _admin: str = Depends(require_admin),
 ):
-    with Session(engine) as session:
-        product = Product(
-            name          = name,
-            slug          = slugify(name),
-            description   = description,
-            price         = price,
-            category_id   = category_id,
-            image_url     = image_url or None,
-            is_available  = is_available  == "on",
-            is_featured   = is_featured   == "on",
-            is_vegetarian = is_vegetarian == "on",
-            is_spicy      = is_spicy      == "on",
-            sort_order    = sort_order,
-        )
-        session.add(product)
-        session.commit()
+    product = Product(
+        name          = name,
+        slug          = slugify(name),
+        description   = description,
+        price         = price,
+        category_id   = category_id,
+        image_url     = image_url or None,
+        is_available  = is_available  == "on",
+        is_featured   = is_featured   == "on",
+        is_vegetarian = is_vegetarian == "on",
+        is_spicy      = is_spicy      == "on",
+        sort_order    = sort_order,
+    )
+    session.add(product)
+    session.commit()
     return redirect_with_message("/admin/menu", success="Prodotto aggiunto correttamente.")
 
 
@@ -340,14 +386,14 @@ def edit_product_form(
     product_id: int,
     success: str | None = None,
     error: str | None = None,
+    session: Session = Depends(get_session),
     _admin: str = Depends(require_admin),
 ):
-    with Session(engine) as session:
-        product    = session.get(Product, product_id)
-        categories = session.exec(select(Category).order_by(Category.sort_order)).all()
-        products   = session.exec(select(Product).order_by(Product.category_id, Product.sort_order)).all()
-        if not product:
-            return redirect_with_message("/admin/menu", error="Prodotto non trovato.")
+    product    = session.get(Product, product_id)
+    if not product:
+        return redirect_with_message("/admin/menu", error="Prodotto non trovato.")
+    categories = session.exec(select(Category).order_by(Category.sort_order)).all()
+    products   = session.exec(select(Product).order_by(Product.category_id, Product.sort_order)).all()
 
     return templates.TemplateResponse(request, "admin.html", {
         "active_tab":      "menu",
@@ -364,7 +410,7 @@ def edit_product(
     product_id:    int,
     name:          str   = Form(...),
     description:   str   = Form(...),
-    price:         float = Form(...),
+    price:         float = Form(..., ge=0),
     category_id:   int   = Form(...),
     image_url:     str   = Form(""),
     is_available:  Optional[str] = Form(None),
@@ -372,56 +418,56 @@ def edit_product(
     is_vegetarian: Optional[str] = Form(None),
     is_spicy:      Optional[str] = Form(None),
     sort_order:    int   = Form(0),
+    session: Session = Depends(get_session),
     _admin: str = Depends(require_admin),
 ):
-    with Session(engine) as session:
-        product = session.get(Product, product_id)
-        if not product:
-            return redirect_with_message("/admin/menu", error="Prodotto non trovato.")
+    product = session.get(Product, product_id)
+    if not product:
+        return redirect_with_message("/admin/menu", error="Prodotto non trovato.")
 
-        product.name          = name
-        product.slug          = slugify(name)
-        product.description   = description
-        product.price         = price
-        product.category_id   = category_id
-        product.image_url     = image_url or None
-        product.is_available  = is_available  == "on"
-        product.is_featured   = is_featured   == "on"
-        product.is_vegetarian = is_vegetarian == "on"
-        product.is_spicy      = is_spicy      == "on"
-        product.sort_order    = sort_order
+    product.name          = name
+    product.slug          = slugify(name)
+    product.description   = description
+    product.price         = price
+    product.category_id   = category_id
+    product.image_url     = image_url or None
+    product.is_available  = is_available  == "on"
+    product.is_featured   = is_featured   == "on"
+    product.is_vegetarian = is_vegetarian == "on"
+    product.is_spicy      = is_spicy      == "on"
+    product.sort_order    = sort_order
 
-        session.add(product)
-        session.commit()
+    session.add(product)
+    session.commit()
     return redirect_with_message("/admin/menu", success="Prodotto modificato con successo.")
 
 
 @router.post("/admin/menu/product/{product_id}/delete")
 def delete_product(
     product_id: int,
+    session: Session = Depends(get_session),
     _admin: str = Depends(require_admin),
 ):
-    with Session(engine) as session:
-        product = session.get(Product, product_id)
-        if not product:
-            return redirect_with_message("/admin/menu", error="Prodotto non trovato.")
-        session.delete(product)
-        session.commit()
+    product = session.get(Product, product_id)
+    if not product:
+        return redirect_with_message("/admin/menu", error="Prodotto non trovato.")
+    session.delete(product)
+    session.commit()
     return redirect_with_message("/admin/menu", success="Prodotto eliminato con successo.")
 
 
 @router.post("/admin/menu/product/{product_id}/toggle")
 def toggle_availability(
     product_id: int,
+    session: Session = Depends(get_session),
     _admin: str = Depends(require_admin),
 ):
-    with Session(engine) as session:
-        product = session.get(Product, product_id)
-        if not product:
-            return redirect_with_message("/admin/menu", error="Prodotto non trovato.")
-        product.is_available = not product.is_available
-        session.add(product)
-        session.commit()
+    product = session.get(Product, product_id)
+    if not product:
+        return redirect_with_message("/admin/menu", error="Prodotto non trovato.")
+    product.is_available = not product.is_available
+    session.add(product)
+    session.commit()
     stato = "disponibile" if product.is_available else "non disponibile"
     return redirect_with_message("/admin/menu", success=f"Prodotto ora {stato}.")
 
@@ -430,36 +476,36 @@ def toggle_availability(
 def add_category(
     name:       str = Form(...),
     sort_order: int = Form(0),
+    session: Session = Depends(get_session),
     _admin: str = Depends(require_admin),
 ):
-    with Session(engine) as session:
-        category = Category(
-            name       = name,
-            slug       = slugify(name),
-            sort_order = sort_order,
-        )
-        session.add(category)
-        session.commit()
+    category = Category(
+        name       = name,
+        slug       = slugify(name),
+        sort_order = sort_order,
+    )
+    session.add(category)
+    session.commit()
     return redirect_with_message("/admin/menu", success="Categoria aggiunta correttamente.")
 
 
 @router.post("/admin/menu/category/{category_id}/delete")
 def delete_category(
     category_id: int,
+    session: Session = Depends(get_session),
     _admin: str = Depends(require_admin),
 ):
-    with Session(engine) as session:
-        products_in_cat = session.exec(
-            select(Product).where(Product.category_id == category_id)
-        ).all()
-        if products_in_cat:
-            return redirect_with_message(
-                "/admin/menu",
-                error="Impossibile eliminare: la categoria contiene ancora dei prodotti."
-            )
-        category = session.get(Category, category_id)
-        if not category:
-            return redirect_with_message("/admin/menu", error="Categoria non trovata.")
-        session.delete(category)
-        session.commit()
+    products_in_cat = session.exec(
+        select(Product).where(Product.category_id == category_id)
+    ).all()
+    if products_in_cat:
+        return redirect_with_message(
+            "/admin/menu",
+            error="Impossibile eliminare: la categoria contiene ancora dei prodotti."
+        )
+    category = session.get(Category, category_id)
+    if not category:
+        return redirect_with_message("/admin/menu", error="Categoria non trovata.")
+    session.delete(category)
+    session.commit()
     return redirect_with_message("/admin/menu", success="Categoria eliminata con successo.")

@@ -31,6 +31,12 @@ IS_PRODUCTION = ENVIRONMENT == "production"
 # Quantità massima ordinabile per singolo prodotto.
 MAX_QUANTITY_PER_PRODUCT: int = 20
 
+# ── Email ricevuta ordine ────────────────────────────────────────────────────
+# Opzionali: se mancano, l'invio della ricevuta viene semplicemente saltato
+# (loggato come warning) invece di far crashare l'avvio dell'app.
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
+EMAIL_FROM     = os.getenv("EMAIL_FROM", "").strip()
+
 # ── CORS ─────────────────────────────────────────────────────────────────────
 # In produzione imposta CORS_ORIGINS nel .env con i domini reali del frontend
 # separati da virgola, es: "https://mia-pizzeria.vercel.app,https://www.mia-pizzeria.it"

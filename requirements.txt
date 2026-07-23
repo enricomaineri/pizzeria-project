@@ -12,3 +12,7 @@ python-slugify>=8.0.4
 itsdangerous>=2.2.0
 slowapi>=0.1.9
 Jinja2>=3.1.6
+httpx>=0.28.1
+
+# Test
+pytest>=9.0.3

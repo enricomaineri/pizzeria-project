@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="brand">
+      <span class="brand-icon">V</span>
+      <div class="brand-copy">
+        <strong>Vesuvio</strong>
+        <small>Pizza • Delivery • Take Away</small>
+      </div>
+    </a>
+
+    <nav class="main-nav">
+      <a href="/">Home</a>
+      <a href="/menu">Menu</a>
+      <a href="/contatti">Contatti</a>
+      <a href="/#chatbot">Ordina</a>
+    </nav>
+
+    <div class="header-actions">
+      <a href="/menu" class="btn btn-ghost">Vedi il menu</a>
+      <a href="/" class="btn btn-primary">Torna alla home</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero-premium">
+    <div class="hero-overlay"></div>
+    <div class="container" style="padding: 5rem 1rem; text-align: center;">
+      <p class="eyebrow light">Errore {{ status_code }}</p>
+      <h1>{{ message }}</h1>
+      <div class="hero-buttons" style="justify-content: center; margin-top: 2rem;">
+        <a href="/" class="btn btn-primary">Torna alla home</a>
+        <a href="/menu" class="btn btn-outline-light">Guarda il menu</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer premium-footer">
+  <div class="container footer-inner">
+    <div><strong>Vesuvio</strong></div>
+    <div class="footer-links">
+      <a href="/">Home</a>
+      <a href="/menu">Menu</a>
+      <a href="/contatti">Contatti</a>
+    </div>
+  </div>
+</footer>
+{% endblock %}

@@ -38,14 +38,14 @@ function renderMenu(categories) {
 
   if (!categories.length) {
     menuStatusTitle.textContent = 'Nessun prodotto disponibile';
-    menuStatusText.textContent  = 'Il database è raggiungibile, ma al momento il menu è vuoto.';
+    menuStatusText.textContent  = 'Il menu è momentaneamente vuoto, torna a trovarci più tardi.';
     menuDynamicContent.innerHTML = '';
     renderAnchors([]);
     return;
   }
 
-  menuStatusTitle.textContent = 'Menu caricato correttamente';
-  menuStatusText.textContent  = 'Questi contenuti arrivano direttamente dal database del progetto.';
+  menuStatusTitle.textContent = 'Ecco il menu di oggi';
+  menuStatusText.textContent  = 'Sfoglia le categorie qui sotto e scegli quello che preferisci.';
   renderAnchors(categories);
 
   menuDynamicContent.innerHTML = categories.map(category => {
@@ -78,7 +78,7 @@ function renderMenu(categories) {
         <div class="menu-section-head">
           <p class="eyebrow">Categoria</p>
           <h2>${category.name}</h2>
-          <p>Prodotti letti dinamicamente dal database tramite API.</p>
+          <p>Scegli tra le nostre proposte.</p>
         </div>
         ${itemsHtml}
       </section>`;
@@ -99,16 +99,16 @@ async function loadMenu() {
     const data = await response.json();
     renderMenu(data.categories || []);
   } catch (error) {
-    menuStatusTitle.textContent = 'Errore nel caricamento';
-    menuStatusText.textContent  = 'Non sono riuscito a leggere il menu dal backend.';
-    menuAnchorLinks.innerHTML   = `<span class="anchor-placeholder">API non disponibile</span>`;
-    menuSidebarLinks.innerHTML  = `<p>API non disponibile</p>`;
+    menuStatusTitle.textContent = 'Qualcosa non ha funzionato';
+    menuStatusText.textContent  = 'Non riusciamo a mostrare il menu in questo momento.';
+    menuAnchorLinks.innerHTML   = `<span class="anchor-placeholder">Menu non disponibile</span>`;
+    menuSidebarLinks.innerHTML  = `<p>Menu non disponibile</p>`;
     menuDynamicContent.innerHTML = `
       <section class="menu-section">
         <div class="menu-section-head">
-          <p class="eyebrow">Errore</p>
-          <h2>Il menu non è disponibile</h2>
-          <p>Controlla che il server sia avviato, che il database esista e che /api/menu risponda correttamente.</p>
+          <p class="eyebrow">Ci scusiamo</p>
+          <h2>Il menu non è disponibile al momento</h2>
+          <p>Riprova tra qualche minuto oppure chiamaci al +39 0123 456789: saremo felici di aiutarti.</p>
         </div>
       </section>`;
     console.error('Errore caricamento menu:', error);

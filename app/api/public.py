@@ -10,5 +10,5 @@ def home(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="index.html",
-        context={"title": "Pizzeria Project"}
+        context={"title": "Vesuvio | Pizzeria artigianale a Varese"}
     )

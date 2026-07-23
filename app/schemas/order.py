@@ -21,6 +21,7 @@ class OrderItemCreate(BaseModel):
 class OrderCreate(BaseModel):
     customer_name:    str             = Field(..., min_length=2, max_length=100)
     phone:            str
+    customer_email:   str             = Field(..., max_length=254)
     address:          str | None      = Field(default=None, max_length=200)
     fulfillment_type: FulfillmentType
     slot_label:       str
@@ -34,6 +35,14 @@ class OrderCreate(BaseModel):
             raise ValueError("Numero di telefono non valido")
         return v
 
+    @field_validator("customer_email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        cleaned = v.strip()
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", cleaned):
+            raise ValueError("Indirizzo email non valido")
+        return cleaned
+
     @field_validator("customer_name")
     @classmethod
     def validate_name(cls, v: str) -> str:
@@ -45,6 +54,7 @@ class OrderCreate(BaseModel):
 class SlotCheckRequest(BaseModel):
     fulfillment_type: FulfillmentType
     slot_label:       str
+    items:            List[OrderItemCreate] = Field(..., min_length=1)
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,33 @@
+<div style="font-family: Arial, Helvetica, sans-serif; max-width: 480px; margin: 0 auto; color: #222;">
+  <h2 style="color: #c1440e;">Vesuvio — Conferma ordine #{{ order.id }}</h2>
+  <p>Ciao {{ order.customer_name }}, grazie per il tuo ordine! Ecco il riepilogo:</p>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+    <thead>
+      <tr style="border-bottom: 2px solid #eee; text-align: left;">
+        <th style="padding: 8px 0;">Prodotto</th>
+        <th style="padding: 8px 0; text-align: center;">Qt.</th>
+        <th style="padding: 8px 0; text-align: right;">Totale</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr style="border-bottom: 1px solid #eee;">
+        <td style="padding: 8px 0;">{{ item.product_name }}</td>
+        <td style="padding: 8px 0; text-align: center;">{{ item.quantity }}</td>
+        <td style="padding: 8px 0; text-align: right;">&euro;{{ "%.2f"|format(item.line_total) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p style="font-size: 1.1em;"><strong>Totale: &euro;{{ "%.2f"|format(order.total_price) }}</strong></p>
+
+  <p>
+    <strong>Modalit&agrave;:</strong> {{ "Consegna a domicilio" if order.fulfillment_type == "delivery" else "Ritiro in negozio" }}<br>
+    <strong>Orario:</strong> {{ order.slot_label }}
+    {% if order.address %}<br><strong>Indirizzo:</strong> {{ order.address }}{% endif %}
+  </p>
+
+  <p style="color: #666; font-size: 0.9em;">Per qualsiasi domanda chiamaci al +39 0123 456789.</p>
+</div>

@@ -109,6 +109,7 @@ def seed_data():
                 category_id=cat_map["bevande"],
                 is_available=True,
                 sort_order=1,
+                prep_weight=0.2,
             ),
             Product(
                 name="Coca-Cola Zero 33cl",
@@ -118,6 +119,7 @@ def seed_data():
                 category_id=cat_map["bevande"],
                 is_available=True,
                 sort_order=2,
+                prep_weight=0.2,
             ),
             Product(
                 name="Acqua naturale",
@@ -127,6 +129,7 @@ def seed_data():
                 category_id=cat_map["bevande"],
                 is_available=True,
                 sort_order=3,
+                prep_weight=0.2,
             ),
             Product(
                 name="Birra 33cl",
@@ -136,6 +139,7 @@ def seed_data():
                 category_id=cat_map["bevande"],
                 is_available=True,
                 sort_order=4,
+                prep_weight=0.2,
             ),
             Product(
                 name="Bufala",
@@ -145,6 +149,7 @@ def seed_data():
                 category_id=cat_map["extra"],
                 is_available=True,
                 sort_order=1,
+                prep_weight=0.4,
             ),
             Product(
                 name="Burrata",
@@ -154,6 +159,7 @@ def seed_data():
                 category_id=cat_map["extra"],
                 is_available=True,
                 sort_order=2,
+                prep_weight=0.4,
             ),
             Product(
                 name="Salame piccante",
@@ -163,6 +169,7 @@ def seed_data():
                 category_id=cat_map["extra"],
                 is_available=True,
                 sort_order=3,
+                prep_weight=0.4,
             ),
         ]
 

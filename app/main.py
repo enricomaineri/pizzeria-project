@@ -15,6 +15,7 @@ from app.config import ALLOWED_ORIGINS
 from app.api.router import router
 from app.db import create_db_and_tables
 from app.seed import seed_data
+from app.templates_config import templates
 
 logger = logging.getLogger("pizzeria")
 
@@ -55,9 +56,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         field = " → ".join(str(loc) for loc in e["loc"] if loc != "body")
         msg = e["msg"]
         messages.append(f"{field}: {msg}" if field else msg)
-    return JSONResponse(
+
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(status_code=422, content={"detail": messages})
+
+    return templates.TemplateResponse(
+        request, "error.html",
+        {"status_code": 422, "message": "Dati non validi: " + "; ".join(messages)},
         status_code=422,
-        content={"detail": messages}
     )
 
 
@@ -71,9 +77,11 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         )
     if exc.status_code in (401, 403):
         return RedirectResponse(url="/admin/login", status_code=302)
-    return JSONResponse(
+    message = "La pagina che cerchi non esiste." if exc.status_code == 404 else (exc.detail or "Si è verificato un errore.")
+    return templates.TemplateResponse(
+        request, "error.html",
+        {"status_code": exc.status_code, "message": message},
         status_code=exc.status_code,
-        content={"detail": exc.detail or "Errore"}
     )
 
 
@@ -86,6 +94,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
             status_code=500,
             content={"detail": "Errore interno del server. Riprova tra qualche istante."}
         )
-    return RedirectResponse(url="/admin", status_code=302)
+    return RedirectResponse(url="/", status_code=302)
 
 

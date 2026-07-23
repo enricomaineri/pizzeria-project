@@ -147,7 +147,6 @@
             <form method="get" action="/admin/storico" id="date-form">
               <input type="date" name="data" id="date-input"
                      value="{{ selected_date }}"
-                     max="{{ '' }}"
                      style="margin-bottom:.6rem;">
               <button type="submit" class="btn btn-primary btn-sm" style="width:100%;">Vai</button>
             </form>
@@ -323,12 +322,14 @@
                 </div>
                 <div class="form-group">
                   <label>Orario di consegna/ritiro *</label>
-                  <select name="slot_label" required>
+                  <select name="slot_label" id="slot-select" onchange="handleSlotChange()" required>
                     {% for slot in slots %}
                       <option value="{{ slot }}">{{ slot }}</option>
                     {% endfor %}
                     <option value="__custom__" id="custom-slot-option">Altro orario…</option>
                   </select>
+                  <input type="text" id="custom-slot-input" placeholder="Es: 21:45"
+                         pattern="([01][0-9]|2[0-3]):[0-5][0-9]" style="display:none; margin-top:.5rem;">
                 </div>
                 <div class="form-group full" id="address-group" style="display:none;">
                   <label>Indirizzo di consegna</label>

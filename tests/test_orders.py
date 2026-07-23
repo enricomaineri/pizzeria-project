@@ -31,6 +31,7 @@ def _order_payload(product_id: int, slot: str = "18:30", fulfillment: str = "del
     return {
         "customer_name": "Mario Rossi",
         "phone": "3331234567",
+        "customer_email": "mario.rossi@example.com",
         "address": "Via Roma 1",
         "fulfillment_type": fulfillment,
         "slot_label": slot,
@@ -103,10 +104,10 @@ def test_create_order_invalid_fulfillment_type(client: TestClient, session: Sess
 # ── Test slot ────────────────────────────────────────────────────────────────
 
 def test_slot_becomes_unavailable_when_full(client: TestClient, session: Session):
-    """Dopo MAX_ORDERS_PER_SLOT ordini lo slot deve risultare pieno (409)."""
-    from app.api.orders import MAX_ORDERS_PER_SLOT
-    product = _seed_product(session)
-    limit = MAX_ORDERS_PER_SLOT["delivery"]
+    """Dopo aver riempito il peso massimo dello slot, il prossimo ordine deve fallire (409)."""
+    from app.api.orders import MAX_WEIGHT_PER_SLOT
+    product = _seed_product(session)  # prep_weight di default = 1.0
+    limit = int(MAX_WEIGHT_PER_SLOT["delivery"])
 
     for _ in range(limit):
         r = client.post("/api/orders", json=_order_payload(product.id, slot="18:30"))

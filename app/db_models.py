@@ -39,12 +39,16 @@ class Product(SQLModel, table=True):
     is_vegetarian:bool          = Field(default=False)
     is_spicy:     bool          = Field(default=False)
     sort_order:   int           = Field(default=0)
+    # Peso relativo di preparazione usato per il carico degli slot ordini.
+    # 1.0 = una pizza. Bevande/extra pesano meno perché non impegnano il forno.
+    prep_weight:  float         = Field(default=1.0)
 
 
 class Order(SQLModel, table=True):
     id:               Optional[int]    = Field(default=None, primary_key=True)
     customer_name:    str
     phone:            str
+    customer_email:   str
     address:          Optional[str]    = None
     fulfillment_type: FulfillmentType
     slot_label:       str              = Field(index=True)
@@ -63,5 +67,8 @@ class OrderItem(SQLModel, table=True):
     quantity:     int
     unit_price:   float
     line_total:   float
+    # Snapshot del prep_weight del prodotto al momento dell'ordine (come unit_price):
+    # se il peso del prodotto cambia in futuro, gli ordini storici restano coerenti.
+    prep_weight:  float         = Field(default=1.0)
 
     order: Optional[Order] = Relationship(back_populates="items")
