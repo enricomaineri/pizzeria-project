@@ -306,22 +306,22 @@
             <div class="card">
               <div class="form-grid">
                 <div class="form-group">
-                  <label>Nome cliente *</label>
+                  <label>Nome cliente</label>
                   <input type="text" name="customer_name" required placeholder="Mario Rossi">
                 </div>
                 <div class="form-group">
-                  <label>Telefono *</label>
+                  <label>Telefono</label>
                   <input type="text" name="phone" required placeholder="333 1234567">
                 </div>
                 <div class="form-group">
-                  <label>Tipo ordine *</label>
+                  <label>Tipo ordine</label>
                   <select name="fulfillment_type" id="fulfillment-type" onchange="toggleAddress()" required>
                     <option value="pickup">Ritiro in negozio</option>
                     <option value="delivery">Consegna a domicilio</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label>Orario di consegna/ritiro *</label>
+                  <label>Orario di consegna/ritiro</label>
                   <select name="slot_label" id="slot-select" onchange="handleSlotChange()" required>
                     {% for slot in slots %}
                       <option value="{{ slot }}">{{ slot }}</option>
