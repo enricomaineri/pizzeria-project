@@ -236,9 +236,13 @@ def create_order(
         total_price      = round(total_price, 2),
     )
 
+    # Ordine e righe vanno salvati nella STESSA transazione: il controllo capacità
+    # somma il peso delle righe (OrderItem), quindi un commit intermedio dopo il
+    # solo Order rilascerebbe il lock BEGIN IMMEDIATE prima che le righe esistano,
+    # e una richiesta concorrente vedrebbe lo slot ancora libero (overbooking).
+    # flush() assegna order.id senza chiudere la transazione.
     session.add(order)
-    session.commit()
-    session.refresh(order)
+    session.flush()
 
     for item in order_items_to_create:
         session.add(OrderItem(
@@ -252,6 +256,7 @@ def create_order(
         ))
 
     session.commit()
+    session.refresh(order)
 
     background_tasks.add_task(send_order_receipt, order, order_items_to_create)
 

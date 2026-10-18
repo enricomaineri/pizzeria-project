@@ -5,6 +5,7 @@ A web application for browsing a pizzeria menu and placing pickup or delivery or
 ## Features
 
 - Menu organised by category, with product availability and dietary labels.
+- Guided ordering assistant: a step-by-step chat interface (rule-based, in JavaScript) that walks the customer through category, products, pickup or delivery, time slot and contact details, validating input before the order is sent to the API.
 - Pickup and delivery orders with separate time slots.
 - Slot-capacity checks based on the preparation weight of the order.
 - Admin login with bcrypt password verification and signed session cookies.
@@ -26,7 +27,7 @@ Requires Python 3.11 or newer.
 python -m venv .venv
 ```
 
-Activate the virtual environment, install dependencies, and create a local environment file:
+Activate the virtual environment (`.venv\Scripts\activate` on Windows, `source .venv/bin/activate` on macOS/Linux) and install the pinned dependencies:
 
 ```bash
 pip install -r requirements-lock.txt
@@ -51,6 +52,8 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The app creates its SQLite 
 ```bash
 pytest
 ```
+
+The test suite (50 tests) covers the public pages, menu API, order validation, slot capacity, admin authentication and management endpoints, and a concurrency test that sends simultaneous orders to check that a time slot is never overbooked.
 
 ## Deployment status
 
