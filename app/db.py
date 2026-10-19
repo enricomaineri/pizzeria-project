@@ -16,7 +16,7 @@ engine = create_engine(sqlite_url, echo=False, connect_args=connect_args)
 # capacità slot e prenotare entrambe lo stesso posto (race condition verificata
 # con test di concorrenza reale: overbooking oltre il limite configurato).
 # Disabilitiamo la gestione automatica di pysqlite ed emettiamo noi un
-# BEGIN IMMEDIATE esplicito a ogni transazione, cosi' il lock di scrittura
+# BEGIN IMMEDIATE esplicito a ogni transazione, così il lock di scrittura
 # viene preso subito e le transazioni concorrenti si serializzano davvero.
 @event.listens_for(engine, "connect")
 def _sqlite_disable_pysqlite_begin(dbapi_connection, connection_record):

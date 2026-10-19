@@ -4,7 +4,7 @@ A web application for browsing a pizzeria menu and placing pickup or delivery or
 
 ## Features
 
-- Menu organised by category, with product availability and dietary labels.
+- Menu organized by category, with product availability and dietary labels.
 - Guided ordering assistant: a step-by-step chat interface (rule-based, in JavaScript) that walks the customer through category, products, pickup or delivery, time slot and contact details, validating input before the order is sent to the API.
 - Pickup and delivery orders with separate time slots.
 - Slot-capacity checks based on the preparation weight of the order.
@@ -59,6 +59,6 @@ The test suite (50 tests) covers the public pages, menu API, order validation, s
 
 The included Render Blueprint uses the Free plan. The app stores its database in the local `vesuvio.db` file, and the Blueprint does not configure a persistent database or disk. Render documents that Free web services lose local file changes when they restart, redeploy, or spin down. Treat this deployment configuration as a demo setup; use durable database storage before relying on it for real orders.
 
-## Security and demo data
+## Security
 
-Keep `.env` out of version control and use unique credentials and secret keys. The repository includes an environment-variable template; it does not need real credentials committed to GitHub.
+Credentials are read from environment variables: `.env` is excluded from version control, and `.env.example` documents the required values. Use a unique password hash and secret key for each deployment.
